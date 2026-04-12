@@ -13,7 +13,7 @@ provider: openrouter
 #   openrouter → nvidia/nemotron-3-super-120b-a12b:free   (largest free model)
 #   ollama     → qwen3:latest
 #   kilo       → moonshotai/moonshot-v1-8k
-model: ""
+model: "nvidia/nemotron-3-super-120b-a12b:free"
 
 # Leave blank to use the standard base URL for the selected provider.
 base_url: ""
