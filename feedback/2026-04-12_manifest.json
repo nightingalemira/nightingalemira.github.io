@@ -1,25 +1,4 @@
 {
   "date": "2026-04-12",
-  "papers": [
-    {
-      "paperId": "13880a0b27fde10f878ed6cd4a862e9dd26294c7",
-      "title": "Recommendation System Based on Customer Reviews Using AI and NLP"
-    },
-    {
-      "paperId": "dba2b5ac676784c3bfcc1037ca794b94e0f4aa4c",
-      "title": "Integrating Structured and Unstructured Data for Enhanced Marketing Intelligence through Text Mining and Business Analytics"
-    },
-    {
-      "paperId": "729b994c76e0375e2bc3b50f6ecf8072bc192aef",
-      "title": "Understanding Gender-Specific Daily Care Preferences: Topic Modeling Study"
-    },
-    {
-      "paperId": "02666302cf554616e5cb342765e9df8f1ba6abdd",
-      "title": "Determinants of Public Engagement in ICH Study Tours: An Integrated Approach Combining Association Rule Mining and Textual Sentiment Analysis"
-    },
-    {
-      "paperId": "3dbee530f35bea5b13298096ef7ed3a395ce4ea9",
-      "title": "Factors Related to Sustained Use of a Free Mobile App for Dietary Self-Monitoring With Photography and Peer Feedback: Retrospective Cohort Study"
-    }
-  ]
+  "papers": []
 }
