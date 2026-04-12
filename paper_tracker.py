@@ -209,15 +209,42 @@ def _s2_keyword_search(query: str, limit: int) -> list:
 
 
 def _arxiv_search(query: str, max_results: int) -> list:
-    """Fetch from arXiv Atom feed and normalise to S2-like dicts."""
+    """Fetch from arXiv Atom feed and normalise to S2-like dicts.
+
+    Retries up to 3 times with exponential back-off (10 s, 20 s, 40 s).
+    On persistent failure returns [] so the rest of the pipeline still runs.
+    """
     import xml.etree.ElementTree as ET
+    import time
+    from requests.exceptions import ReadTimeout, ConnectionError as ReqConnError
+
     encoded = requests.utils.quote(query)
     url = (
         f"https://export.arxiv.org/api/query"
         f"?search_query=all:{encoded}&start=0&max_results={max_results}"
         f"&sortBy=submittedDate&sortOrder=descending"
     )
-    resp = requests.get(url, timeout=30)
+
+    ARXIV_TIMEOUT = 90          # seconds — arXiv is slow under load on CI runners
+    MAX_RETRIES   = 3
+    BACKOFF_BASE  = 10          # seconds; doubles each retry: 10, 20, 40
+
+    resp = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.get(url, timeout=ARXIV_TIMEOUT)
+            break                   # success — exit retry loop
+        except (ReadTimeout, ReqConnError) as exc:
+            wait = BACKOFF_BASE * (2 ** (attempt - 1))
+            if attempt < MAX_RETRIES:
+                print(f"WARNING: arXiv attempt {attempt} failed ({exc.__class__.__name__}). "
+                      f"Retrying in {wait} s…")
+                time.sleep(wait)
+            else:
+                print(f"WARNING: arXiv search failed after {MAX_RETRIES} attempts "
+                      f"({exc.__class__.__name__}). Skipping arXiv results for today.")
+                return []
+
     if resp.status_code != 200:
         print(f"WARNING: arXiv search returned {resp.status_code}")
         return []
