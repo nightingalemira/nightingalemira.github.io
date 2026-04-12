@@ -193,12 +193,37 @@ def _update_config_prompts(refined: dict) -> None:
 
 
 def _s2_keyword_search(query: str, limit: int) -> list:
+    """Search S2 filtered to management-relevant fields of study.
+
+    fieldsOfStudy restricts results to Business / Economics / Sociology etc.
+    so that pure ML/NLP benchmark papers don't crowd out management papers.
+    Cross-disciplinary NLP+management papers are indexed under Business or
+    Economics in S2, so they are still returned.
+    publicationTypes=JournalArticle ensures only journal papers come back —
+    which aligns with the ABS whitelist (conference papers are not ABS-ranked).
+    """
     s2_key = os.getenv("S2_API_KEY", "")
     headers = {"x-api-key": s2_key} if s2_key else {}
+
+    # S2 field-of-study slugs covering management / business / social science.
+    # "Computer Science" is intentionally omitted — pure CS/ML papers should not
+    # dominate. Cross-disciplinary work appears under Business or Economics.
+    FIELDS_OF_STUDY = ",".join([
+        "Business",
+        "Economics",
+        "Sociology",
+        "Psychology",
+        "Political Science",
+        "Environmental Science",
+    ])
+
     params = {
-        "query":  query,
-        "fields": "paperId,title,abstract,authors,url,venue,externalIds,publicationDate,year",
-        "limit":  min(limit, 100),
+        "query":            query,
+        "fields":           ("paperId,title,abstract,authors,url,venue,"
+                             "externalIds,publicationDate,year"),
+        "fieldsOfStudy":    FIELDS_OF_STUDY,
+        "publicationTypes": "JournalArticle",
+        "limit":            min(limit, 100),
     }
     url = f"{S2_BASE}/graph/v1/paper/search"
     resp = requests.get(url, headers=headers, params=params, timeout=30)
@@ -299,10 +324,12 @@ def _filter_and_rank(papers: list, top_n: int) -> list:
             continue
         venue = (p.get("venue") or "").lower()
 
-        # Whitelist check: if the whitelist is non-empty, the venue must match
-        # at least one entry.  arXiv preprints are always allowed (unranked by
-        # design — the user controls this via the 'sources' config key).
-        if whitelisted and venue not in ("arxiv", ""):
+        # Whitelist check: if the whitelist is non-empty, the venue must
+        # substring-match at least one ABS journal entry.
+        # arXiv preprints (venue=="arxiv") do NOT receive a free pass —
+        # they are unranked and will not match any ABS entry, so they are
+        # blocked when the whitelist is active. This is the intended behaviour.
+        if whitelisted:
             if not any(wv in venue for wv in whitelisted):
                 continue
 
