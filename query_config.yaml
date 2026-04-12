@@ -1,73 +1,31 @@
-# query_config.yaml
-# -----------------
-# Controls how papers are retrieved each day.
-#
-# mode: "similarity"  -- use Semantic Scholar recommendations API
-#                        (requires seed_paper_positive.csv)
-# mode: "query"       -- freeform interest / keyword / prompt-based search
-
 mode: query
+user_interest: 'Textual analysis with a preference for NLP methods and a strong preference
+  for LLM-based approaches applied to management science topics. Core areas of interest
+  include: responsibility shifting in organisations, anti-fragility studies, ESG (Environmental
+  Social Governance) research, and AI adoption in firms and industries. Papers should
+  be empirical or methodological contributions, not purely theoretical or benchmark-only.
+  Preference for cross-disciplinary work bridging NLP/LLM techniques with management,
+  strategy, or organisational studies.
 
-# ── MODE B (query) settings ─────────────────────────────────────────────────
-# These are only used when mode: query
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │  user_interest  (RECOMMENDED — write anything here)                    │
-# │  A sentence, bullet notes, topic fragments, or rough ideas.            │
-# │  The LLM converts this into precise search keywords and focused        │
-# │  summarisation prompts on the first run, then persists them below.     │
-# └─────────────────────────────────────────────────────────────────────────┘
-user_interest: >
-  Textual analysis with a preference for NLP methods and a strong preference
-  for LLM-based approaches applied to management science topics. Core areas
-  of interest include: responsibility shifting in organisations, anti-fragility
-  studies, ESG (Environmental Social Governance) research, and AI adoption in
-  firms and industries. Papers should be empirical or methodological
-  contributions, not purely theoretical or benchmark-only. Preference for
-  cross-disciplinary work bridging NLP/LLM techniques with management, strategy,
-  or organisational studies.
-
-# Explicit keywords — auto-populated by the LLM refiner from user_interest above,
-# or set manually. These are joined into a search query for S2 and arXiv.
+  '
 keywords:
-  - LLM text analysis management science
-  - NLP ESG corporate responsibility
-  - AI adoption organisations
-  - anti-fragility organisational resilience
-  - responsibility shifting NLP
-  - large language models strategy
-  - textual analysis management
-
-# Which APIs to search (one or both).
-# NOTE: arXiv is always allowed through the ABS whitelist filter (unranked preprints).
-# Set to [semanticscholar] to restrict to journal-ranked papers only.
-# Sources to search.  "arxiv" is removed by default because arXiv preprints
-# are not ABS-ranked and will be blocked by abs_whitelist.txt anyway.
-# Add "arxiv" back here ONLY if you clear abs_whitelist.txt (allow all venues).
+- textual analysis preference
+- analysis preference nlp
+- preference nlp methods
+- nlp methods strong
+- methods strong preference
+- strong preference llm
 sources:
-  - semanticscholar
-
-# Maximum number of papers to retrieve and summarise per run
+- semanticscholar
 max_papers: 10
+system_prompt: "You are a rigorous academic expert. Given a paper title, TLDR, and\
+  \ abstract, produce a concise structured summary in English. Output ONLY a JSON\
+  \ object with these exact keys:\n  problem   – one sentence: the pain point or research\
+  \ gap addressed\n  method    – the core architecture, algorithm, model, or mechanism\
+  \ used\n  innovation – the key improvement or contribution (metrics, limits resolved)\n\
+  No extra keys, no markdown fences, no preamble."
+user_prompt: 'Title: {title}
 
-# ── Custom summarisation prompts (auto-managed) ──────────────────────────────
-# Populated automatically by the LLM refiner when user_interest is set.
-# You may also set them manually. Leave blank to use built-in defaults.
-# Available template variables in user_prompt: {title}, {tldr}, {abstract}
-
-system_prompt: >
-  You are an expert in management science and computational text analysis.
-  Given a paper title, TLDR, and abstract, produce a concise structured
-  summary focused on: (1) how NLP or LLM methods are applied to a management
-  science problem, (2) the relevance to ESG, AI adoption, responsibility
-  shifting, or anti-fragility, and (3) the key empirical or methodological
-  contribution. Output ONLY a JSON object with keys: problem, method,
-  innovation. No extra keys, no markdown fences, no preamble.
-
-user_prompt: >
-  Title: {title}
   TLDR: {tldr}
-  Abstract: {abstract}
-  Focus on: NLP/LLM methodology applied to management science.
-  Highlight relevance to ESG, AI adoption, responsibility shifting,
-  or anti-fragility where applicable.
+
+  Abstract: {abstract}'
