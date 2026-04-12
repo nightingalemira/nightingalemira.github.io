@@ -1,4 +1,37 @@
 {
   "date": "2026-04-12",
-  "papers": []
+  "papers": [
+    {
+      "paperId": "23687efa4dcf46e778ca87091a1b23a0b51f72b8",
+      "title": "Balancing Efficiency and Safety: How and When Algorithmic Management Induces Gig Workers' Unsafe Behavior"
+    },
+    {
+      "paperId": "01b3df422cb4025a1e0fcdb5421620fafdf0e9f1",
+      "title": "OPTIMISING TARGET IDENTIFICATION IN THE NIGERIAN CAPITAL MARKET USING ARTIFICIAL INTELLIGENCE: AN EMPIRICAL FRAMEWORK FOR FINANCIAL EFFICIENCY, REGULATORY COMPLIANCE AND ECONOMIC COMPETITIVENESS"
+    },
+    {
+      "paperId": "71326825c4fc357f11a3e5768006e93241140e5f",
+      "title": "Intelligent Supply Chain Governance: Integrating AI for Sustainable, Resilient, and ESG-Compliant Procurement"
+    },
+    {
+      "paperId": "9429aaa9a63843c9c3327e73675161e7e230e902",
+      "title": "The use of\n LLMs\n to annotate data in management research: Foundational guidelines and warnings"
+    },
+    {
+      "paperId": "11ef309335b0dbe640abb3c446c42f03d9da943c",
+      "title": "Enhancing portfolio optimization with multi-LLM sentiment aggregation: A Black-Litterman integration approach"
+    },
+    {
+      "paperId": "141c194503c0d46b8842638674c91115b7c5eb22",
+      "title": "Impact of Artificial Intelligence on Effective Document Management in the Banking Sector in Nigeria"
+    },
+    {
+      "paperId": "fec7a3581ffc747c38db655e8ad04e79397a81d3",
+      "title": "Digital Marketing Ethics in the Age of AI: A Comparative Analysis of Transparency and Consumer Trust in E-Commerce Platforms"
+    },
+    {
+      "paperId": "b0b8df9062dd5b7860ab7b10a27ca35c56cf8ba7",
+      "title": "The Impact of Artificial Intelligence on Project Management Efficiency"
+    }
+  ]
 }
