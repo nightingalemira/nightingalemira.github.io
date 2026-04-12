@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Paper — 2026-04-12</title>
+<meta name="description" content="Daily literature digest for 2026-04-12 — 0 papers">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300..700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root,[data-theme="light"] {
+  --bg:              #f7f6f2;
+  --surface:         #f9f8f5;
+  --surface-2:       #fbfbf9;
+  --surface-offset:  #f3f0ec;
+  --border:          #d4d1ca;
+  --divider:         #dcd9d5;
+  --text:            #28251d;
+  --muted:           #7a7974;
+  --faint:           #bab9b4;
+  --text-inv:        #f9f8f4;
+  --primary:         #01696f;
+  --primary-h:       #0c4e54;
+  --primary-hl:      #cedcd8;
+  --shadow-sm:       0 1px 2px oklch(0.2 0.01 80 / 0.06);
+  --shadow-md:       0 4px 12px oklch(0.2 0.01 80 / 0.08);
+  --r-sm: 0.375rem; --r-md: 0.5rem; --r-lg: 0.75rem; --r-full: 9999px;
+  --transition: 180ms cubic-bezier(0.16,1,0.3,1);
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body:    'Work Sans', 'Helvetica Neue', sans-serif;
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+  --text-2xl:  clamp(2rem,     1.2rem  + 2.5vw,  3.5rem);
+}
+[data-theme="dark"] {
+  --bg:              #171614;
+  --surface:         #1c1b19;
+  --surface-2:       #201f1d;
+  --surface-offset:  #1d1c1a;
+  --border:          #393836;
+  --divider:         #262523;
+  --text:            #cdccca;
+  --muted:           #797876;
+  --faint:           #5a5957;
+  --text-inv:        #2b2a28;
+  --primary:         #4f98a3;
+  --primary-h:       #227f8b;
+  --primary-hl:      #313b3b;
+  --shadow-sm:       0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md:       0 4px 12px oklch(0 0 0 / 0.3);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;--surface-offset:#1d1c1a;
+    --border:#393836;--divider:#262523;--text:#cdccca;--muted:#797876;--faint:#5a5957;
+    --text-inv:#2b2a28;--primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#313b3b;
+    --shadow-sm:0 1px 2px oklch(0 0 0/0.2);--shadow-md:0 4px 12px oklch(0 0 0/0.3);
+  }
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;scroll-padding-top:5rem}
+body{font-family:var(--font-body);font-size:var(--text-base);color:var(--text);background:var(--bg);min-height:100dvh;line-height:1.65}
+img,svg{display:block;max-width:100%}
+a{color:var(--primary);transition:color var(--transition)}
+a:hover{color:var(--primary-h)}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+::selection{background:oklch(from var(--primary) l c h / 0.2);color:var(--text)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:var(--r-sm)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.container{max-width:900px;margin-inline:auto;padding-inline:clamp(1rem,4vw,2rem)}
+
+/* ============================================================
+   HEADER / NAV
+   ============================================================ */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  background:color-mix(in oklab,var(--bg) 85%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--divider);
+}
+.header-inner{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-block:.75rem;gap:1rem;flex-wrap:wrap;
+}
+.logo{display:flex;align-items:center;gap:.6rem;text-decoration:none;color:var(--text)}
+.logo svg{color:var(--primary)}
+.logo-text{font-family:var(--font-display);font-size:var(--text-lg);line-height:1}
+.logo-text span{color:var(--primary)}
+.header-nav{display:flex;align-items:center;gap:.5rem}
+.nav-link{font-size:var(--text-sm);color:var(--muted);text-decoration:none;padding:.35rem .7rem;border-radius:var(--r-md);transition:color var(--transition),background var(--transition)}
+.nav-link:hover{color:var(--text);background:var(--surface)}
+.theme-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:var(--r-md);
+  border:1px solid var(--border);
+  transition:border-color var(--transition),background var(--transition);
+}
+.theme-btn:hover{border-color:var(--primary);background:var(--primary-hl)}
+
+/* ============================================================
+   HERO (date banner)
+   ============================================================ */
+.hero{
+  padding-block:clamp(2rem,5vw,3.5rem);
+  border-bottom:1px solid var(--divider);
+}
+.hero-date{font-size:var(--text-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.hero-title{font-family:var(--font-display);font-size:var(--text-2xl);line-height:1.1;margin-bottom:.75rem}
+.hero-title em{color:var(--primary);font-style:italic}
+.hero-meta{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .7rem;border-radius:var(--r-full);font-size:var(--text-xs);font-weight:600;background:color-mix(in oklab,var(--primary) 12%,var(--surface));color:var(--primary)}
+.build-time{font-size:var(--text-xs);color:var(--faint)}
+
+/* ============================================================
+   FILTER BAR
+   ============================================================ */
+.filter-bar{
+  display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+  padding-block:1rem;border-bottom:1px solid var(--divider);
+}
+.filter-label{font-size:var(--text-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.filter-btn{
+  font-size:var(--text-xs);padding:.3rem .7rem;border-radius:var(--r-full);
+  border:1px solid var(--border);color:var(--muted);
+  transition:border-color var(--transition),color var(--transition),background var(--transition);
+}
+.filter-btn:hover,.filter-btn.active{border-color:var(--primary);color:var(--primary);background:var(--primary-hl)}
+.search-input{
+  margin-left:auto;font-size:var(--text-xs);padding:.3rem .75rem;
+  border-radius:var(--r-full);border:1px solid var(--border);
+  background:var(--surface);color:var(--text);width:min(200px,100%);
+  transition:border-color var(--transition);
+}
+.search-input:focus{border-color:var(--primary);outline:none}
+.search-input::placeholder{color:var(--faint)}
+
+/* ============================================================
+   PAPER CARDS
+   ============================================================ */
+.papers-list{padding-block:1.5rem;display:flex;flex-direction:column;gap:1.25rem}
+
+.paper-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:clamp(1rem,3vw,1.5rem);
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow var(--transition),border-color var(--transition);
+}
+.paper-card:hover{box-shadow:var(--shadow-md);border-color:color-mix(in oklab,var(--primary) 30%,var(--border))}
+
+.paper-number{font-size:var(--text-xs);color:var(--faint);font-weight:600;margin-bottom:.4rem;font-variant-numeric:tabular-nums}
+.paper-title{font-family:var(--font-display);font-size:var(--text-lg);line-height:1.25;margin-bottom:.5rem}
+.paper-title a{text-decoration:none;color:var(--text)}
+.paper-title a:hover{color:var(--primary)}
+.paper-meta{display:flex;flex-wrap:wrap;gap:.4rem .75rem;font-size:var(--text-xs);color:var(--muted);margin-bottom:.9rem;align-items:center}
+.paper-venue{font-weight:600;color:var(--primary)}
+.paper-dot{color:var(--faint)}
+
+.tldr-chip{
+  display:inline-flex;align-items:flex-start;gap:.4rem;
+  font-size:var(--text-xs);color:var(--muted);
+  background:var(--surface-offset);border-radius:var(--r-md);
+  padding:.4rem .7rem;margin-bottom:.9rem;line-height:1.5;
+}
+.tldr-chip strong{color:var(--text);white-space:nowrap}
+
+/* Summary blocks */
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:.9rem}
+.summary-block{
+  background:var(--surface-2);border:1px solid var(--divider);
+  border-radius:var(--r-md);padding:.6rem .75rem;
+}
+.summary-block-label{font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin-bottom:.3rem}
+.summary-block-text{font-size:var(--text-sm);color:var(--text);line-height:1.5}
+
+/* Expandable abstract */
+.abstract-toggle{
+  font-size:var(--text-xs);color:var(--muted);
+  display:inline-flex;align-items:center;gap:.3rem;
+  padding:.2rem 0;border-bottom:1px dashed var(--divider);
+  transition:color var(--transition);margin-top:.25rem;
+}
+.abstract-toggle:hover{color:var(--primary)}
+.abstract-toggle svg{transition:transform .2s}
+.abstract-toggle.open svg{transform:rotate(180deg)}
+.abstract-body{
+  display:none;margin-top:.75rem;font-size:var(--text-sm);
+  color:var(--muted);line-height:1.65;
+  border-left:2px solid var(--primary-hl);padding-left:.75rem;
+}
+.abstract-body.visible{display:block}
+
+/* ============================================================
+   FEEDBACK BUTTONS (thumbs up / down)
+   ============================================================ */
+.feedback-row{
+  display:flex;align-items:center;gap:.5rem;
+  margin-top:.75rem;padding-top:.75rem;
+  border-top:1px solid var(--divider);
+}
+.feedback-label{font-size:var(--text-xs);color:var(--muted);flex:1}
+.feedback-btn{
+  display:inline-flex;align-items:center;gap:.3rem;
+  padding:.25rem .6rem;border-radius:var(--r-full);
+  font-size:var(--text-xs);font-family:var(--font-body);
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);cursor:pointer;
+  transition:all var(--transition);
+}
+.feedback-btn:hover{border-color:var(--primary);color:var(--primary)}
+.feedback-btn.voted-up{
+  background:color-mix(in oklab,var(--primary) 15%,transparent);
+  border-color:var(--primary);color:var(--primary);
+}
+.feedback-btn.voted-down{
+  background:color-mix(in oklab,#a13544 15%,transparent);
+  border-color:#a13544;color:#a13544;
+}
+.feedback-btn svg{pointer-events:none}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;padding:5rem 1rem;color:var(--muted);
+}
+.empty-state svg{width:48px;height:48px;margin-bottom:1rem;color:var(--faint)}
+.empty-state h3{font-family:var(--font-display);font-size:var(--text-xl);color:var(--text);margin-bottom:.5rem}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.site-footer{
+  border-top:1px solid var(--divider);
+  padding-block:1.5rem;margin-top:3rem;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;
+  font-size:var(--text-xs);color:var(--muted);
+}
+.footer-links{display:flex;gap:1rem}
+.footer-links a{color:var(--muted);text-decoration:none}
+.footer-links a:hover{color:var(--primary)}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media(max-width:600px){
+  .header-nav .nav-link{display:none}
+  .summary-grid{grid-template-columns:1fr}
+  .hero-title{font-size:var(--text-xl)}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo" aria-label="Daily Paper home">
+      <!-- SVG logo: open book with a spark -->
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect x="2" y="6" width="11" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/>
+        <rect x="15" y="6" width="11" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M13 7v14M13 7c0 0 2-2 5-1M13 21c0 0 2 2 5 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="21" cy="7" r="2.5" fill="currentColor"/>
+      </svg>
+      <span class="logo-text">Daily<span>Paper</span></span>
+    </a>
+    <nav class="header-nav" aria-label="Site navigation">
+      <a href="index.html" class="nav-link">Today</a>
+      <a href="archive.html" class="nav-link">Archive</a>
+      <button class="theme-btn" data-theme-toggle aria-label="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<main>
+<div class="container">
+  <section class="hero">
+    <p class="hero-date">2026-04-12</p>
+    <h1 class="hero-title">Today's <em>Literature Digest</em></h1>
+    <div class="hero-meta">
+      
+      <span class="build-time">Built 2026-04-12 17:19 UTC</span>
+    </div>
+  </section>
+
+  <!-- FILTER BAR -->
+  
+
+  <!-- PAPERS LIST -->
+  <section class="papers-list" id="papers-list" aria-label="Papers">
+  
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <h3>No new papers today</h3>
+      <p>No unseen papers matched your criteria. Check back tomorrow.</p>
+    </div>
+  
+  </section>
+</div>
+</main>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="site-footer">
+  <div class="container" style="display:contents">
+    <span>Daily Paper · 2026-04-12</span>
+    <div class="footer-links">
+      <a href="archive.html">Archive</a>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     JS: theme toggle, filter, sort, search
+     ============================================================ -->
+<script>
+// --- Theme toggle ---
+(function(){
+  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  r.setAttribute('data-theme',d);
+  function setTheme(theme){
+    d=theme;r.setAttribute('data-theme',d);
+    if(t){
+      t.innerHTML=d==='dark'
+        ?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+        :'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      t.setAttribute('aria-label','Switch to '+(d==='dark'?'light':'dark')+' mode');
+    }
+  }
+  setTheme(d);
+  t&&t.addEventListener('click',()=>setTheme(d==='dark'?'light':'dark'));
+})();
+
+// --- Abstract toggles ---
+document.querySelectorAll('.abstract-toggle').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.getAttribute('aria-controls');
+    const body=document.getElementById(id);
+    const open=btn.getAttribute('aria-expanded')==='true';
+    btn.setAttribute('aria-expanded',String(!open));
+    btn.classList.toggle('open',!open);
+    body.classList.toggle('visible',!open);
+  });
+});
+
+// --- Sort & search ---
+(function(){
+  const list=document.getElementById('papers-list');
+  if(!list) return;
+  const cards=()=>Array.from(list.querySelectorAll('.paper-card'));
+  let currentSort='date';
+
+  function applySort(key){
+    currentSort=key;
+    const sorted=cards().sort((a,b)=>{
+      const va=a.dataset[key]||'', vb=b.dataset[key]||'';
+      return key==='date' ? vb.localeCompare(va) : va.localeCompare(vb);
+    });
+    sorted.forEach(c=>list.appendChild(c));
+    // renumber
+    list.querySelectorAll('.paper-number').forEach((n,i)=>n.textContent=String(i+1));
+  }
+
+  document.querySelectorAll('.filter-btn[data-sort]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.filter-btn[data-sort]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      applySort(btn.dataset.sort);
+    });
+  });
+
+  const searchInput=document.getElementById('search-input');
+  if(searchInput){
+    searchInput.addEventListener('input',()=>{
+      const q=searchInput.value.toLowerCase().trim();
+      cards().forEach(c=>{
+        const haystack=(c.dataset.title||'')+' '+(c.dataset.authors||'')+' '+(c.dataset.venue||'');
+        c.style.display=(!q||haystack.includes(q))?'':'none';
+      });
+      // Renumber only visible cards
+      let visN=1;
+      cards().forEach(c=>{
+        if(c.style.display!=='none'){
+          const n=c.querySelector('.paper-number');
+          if(n) n.textContent=String(visN++);
+        }
+      });
+    });
+  }
+})();
+
+// --- Feedback (thumbs up / down) ---
+// Votes are stored in a JSON file written to feedback/YYYY-MM-DD.json
+// via a hidden <form> POST — on GitHub Pages (static), we instead write to
+// an in-memory object and offer a "Copy feedback JSON" button so the user
+// can commit it, OR (if FEEDBACK_ENDPOINT env is set at build time) POST to it.
+(function(){
+  const PAGE_DATE = document.querySelector('.hero-date')?.textContent?.trim() || '';
+  const STORAGE_KEY = 'feedback_' + PAGE_DATE;
+
+  // In-memory votes for this session (no localStorage — sandbox policy)
+  const votes = {};
+
+  function saveVote(pid, ptitle, vote){
+    votes[pid] = {paperId: pid, title: ptitle, vote: vote, date: PAGE_DATE};
+    renderFeedbackHint();
+  }
+
+  function renderFeedbackHint(){
+    const count = Object.keys(votes).length;
+    let hint = document.getElementById('feedback-hint');
+    if(!hint){
+      hint = document.createElement('div');
+      hint.id = 'feedback-hint';
+      hint.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:100;' +
+        'background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);' +
+        'padding:.75rem 1rem;font-size:var(--text-xs);color:var(--muted);' +
+        'box-shadow:var(--shadow-md);max-width:280px;display:flex;flex-direction:column;gap:.5rem;';
+      document.body.appendChild(hint);
+    }
+    hint.innerHTML =
+      '<span style="color:var(--text);font-weight:600">' + count + ' vote' + (count!==1?'s':'') + ' recorded</span>' +
+      '<span>To persist feedback, copy the JSON below and commit it to <code>feedback/' + PAGE_DATE + '.json</code>:</span>' +
+      '<button id="copy-fb-btn" style="align-self:flex-start;padding:.25rem .6rem;border-radius:var(--r-full);' +
+        'border:1px solid var(--border);background:transparent;color:var(--primary);cursor:pointer;font-size:var(--text-xs)">' +
+        'Copy feedback JSON</button>';
+    document.getElementById('copy-fb-btn').onclick = function(){
+      const payload = JSON.stringify({date: PAGE_DATE, feedback: Object.values(votes)}, null, 2);
+      navigator.clipboard.writeText(payload).then(()=>{
+        this.textContent = '✓ Copied!';
+        setTimeout(()=>{ this.textContent = 'Copy feedback JSON'; }, 2000);
+      }).catch(()=>{
+        // Fallback: show in a textarea
+        const ta = document.createElement('textarea');
+        ta.value = payload; ta.style.cssText='width:100%;height:80px;font-size:10px;margin-top:.5rem';
+        hint.appendChild(ta); ta.select();
+      });
+    };
+  }
+
+  document.querySelectorAll('.feedback-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      const vote   = this.dataset.vote;
+      const pid    = this.dataset.pid;
+      const ptitle = this.dataset.ptitle;
+      const card   = this.closest('.paper-card');
+      const row    = this.closest('.feedback-row');
+
+      // Toggle: clicking same vote again removes it
+      if(this.classList.contains('voted-up') || this.classList.contains('voted-down')){
+        row.querySelectorAll('.feedback-btn').forEach(b=>{
+          b.classList.remove('voted-up','voted-down');
+        });
+        delete votes[pid];
+        if(Object.keys(votes).length===0){
+          const hint=document.getElementById('feedback-hint');
+          if(hint) hint.remove();
+        } else { renderFeedbackHint(); }
+        return;
+      }
+
+      // Apply vote
+      row.querySelectorAll('.feedback-btn').forEach(b=>{
+        b.classList.remove('voted-up','voted-down');
+      });
+      this.classList.add(vote==='up'?'voted-up':'voted-down');
+      saveVote(pid, ptitle, vote);
+    });
+  });
+})();
+</script>
+</body>
+</html>

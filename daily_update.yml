@@ -1,0 +1,86 @@
+# daily_update.yml
+# ----------------
+# GitHub Actions workflow for TeamDailyPaper.
+#
+# SETUP INSTRUCTIONS:
+#   1. Copy this file to .github/workflows/daily_update.yml in your repo.
+#   2. Enable GitHub Pages:
+#        Repo Settings → Pages → Source: Deploy from branch → Branch: main / (root)
+#   3. Add the following GitHub Secrets
+#      (Repo Settings → Secrets and variables → Actions → New repository secret):
+#
+#   Required secrets (at least one LLM key):
+#     OPENROUTER_API_KEY   — your OpenRouter API key
+#     KILO_API_KEY         — your KiloCode API key
+#     OLLAMA_BASE_URL      — e.g. http://your-server:11434/v1  (if using Ollama)
+#
+#   Optional:
+#     S2_API_KEY           — Semantic Scholar API key (free, higher rate limits)
+#     LLM_PROVIDER         — override provider: openrouter | ollama | kilo
+#     LLM_MODEL            — override model name
+#
+# The workflow:
+#   - Runs daily at 07:00 UTC
+#   - Can be manually triggered via the Actions tab (workflow_dispatch)
+#   - Checks out the repo, runs the tracker, commits generated HTML back to main
+
+name: Daily Paper Update
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # 07:00 UTC every day
+  workflow_dispatch:        # manual trigger from Actions tab
+
+permissions:
+  contents: write           # needed to commit generated HTML back
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # full history so git log works
+
+      # ── 2. Python setup ─────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 3. Run tracker ──────────────────────────────────────
+      - name: Run paper tracker
+        env:
+          S2_API_KEY:        ${{ secrets.S2_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          KILO_API_KEY:      ${{ secrets.KILO_API_KEY }}
+          OLLAMA_BASE_URL:   ${{ secrets.OLLAMA_BASE_URL }}
+          LLM_PROVIDER:      ${{ secrets.LLM_PROVIDER }}
+          LLM_MODEL:         ${{ secrets.LLM_MODEL }}
+        run: python paper_tracker.py
+
+      # ── 4. Commit generated files ───────────────────────────
+      - name: Commit and push generated site
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage all generated HTML and JSON data files
+          git add index.html archive.html "*.html" feedback/ query_config.yaml seen_papers.txt seed_paper_positive.csv seed_paper_negative.csv
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            TODAY=$(date -u +%Y-%m-%d)
+            git commit -m "chore: daily paper update ${TODAY} [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi

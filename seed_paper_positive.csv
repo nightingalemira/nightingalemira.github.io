@@ -1,0 +1,6 @@
+# seed_paper_positive.csv
+# -----------------------
+# Semantic Scholar paper IDs that represent papers you LIKE.
+# One paper ID per line. Used only in similarity mode.
+# Find paper IDs at https://www.semanticscholar.org
+# Example: 204e3073870fae3d05bcbc2f6a8e263d9b72e776

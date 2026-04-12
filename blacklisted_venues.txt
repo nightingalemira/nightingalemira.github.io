@@ -1,0 +1,7 @@
+# blacklisted_venues.txt
+# ----------------------
+# Venue names (or substrings) to exclude from results.
+# Case-insensitive. One entry per line.
+# Example:
+# workshop
+# symposium on unrelated topic

@@ -1,0 +1,4 @@
+# seed_paper_negative.csv
+# -----------------------
+# Semantic Scholar paper IDs for papers you DON'T want similar results to.
+# Optional. One ID per line.
