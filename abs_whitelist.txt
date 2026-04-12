@@ -198,3 +198,106 @@ Journal of Managerial Psychology
 # ── REGIONAL STUDIES ──────────────────────────────────────────────────────
 Economic Geography
 Regional Studies
+
+# ── ISO 4 ABBREVIATED FORMS (what S2 actually returns in the venue field) ─────
+# Each line below is the abbreviated form of an ABS 3+ journal above.
+# The matching logic checks both full names and these abbreviations.
+Manag. Sci.
+J. Manag. Inf. Syst.
+Acad. Manag. J.
+Acad. Manag. Rev.
+Acad. Manag. Ann.
+Acad. Manag. Perspect.
+Acad. Manag. Discov.
+Acad. Manag. Learn. Educ.
+J. Mark.
+J. Mark. Res.
+J. Consum. Res.
+J. Consum. Psychol.
+Inf. Syst. Res.
+Eur. J. Inf. Syst.
+J. Bus. Ethics
+J. Bus. Res.
+Res. Policy
+J. Manag. Stud.
+Organ. Behav. Hum. Decis. Process.
+Organ. Sci.
+Organ. Stud.
+Strateg. Manag. J.
+J. Int. Bus. Stud.
+J. Appl. Psychol.
+J. Organ. Behav.
+Hum. Resour. Manage.
+Hum. Resour. Manage. J.
+Int. J. Hum. Resour. Manage.
+J. Finance
+J. Financ. Econ.
+J. Financ. Quant. Anal.
+Technol. Forecast. Soc. Change
+Long Range Plan.
+Eur. J. Oper. Res.
+J. Oper. Manag.
+Int. J. Oper. Prod. Manag.
+Prod. Oper. Manag.
+MIS Q.
+MISQ
+J. Assoc. Inf. Syst.
+JAIS
+Decis. Support Syst.
+Inf. Manag.
+J. Inf. Technol.
+J. Strateg. Inf. Syst.
+Internet Res.
+Int. J. Prod. Econ.
+Int. J. Prod. Res.
+J. Supply Chain Manag.
+Supply Chain Manag.
+Manuf. Serv. Oper. Manag.
+J. Account. Econ.
+J. Account. Res.
+Account. Organ. Soc.
+Br. J. Manag.
+J. World Bus.
+J. Int. Manag.
+Int. Bus. Rev.
+Am. Econ. Rev.
+Rev. Econ. Stat.
+J. Labor Econ.
+J. Public Adm. Res. Theory
+Harv. Bus. Rev.
+MIT Sloan Manag. Rev.
+Calif. Manage. Rev.
+J. Manag. Inq.
+Bus. Soc.
+Corp. Gov. Int. Rev.
+Entrep. Theory Pract.
+J. Bus. Venturing
+Small Bus. Econ.
+J. Bank. Finance
+Rev. Finance
+J. Oper. Res. Soc.
+Ann. Oper. Res.
+Comput. Oper. Res.
+Leadersh. Q.
+J. Vocat. Behav.
+Pers. Psychol.
+J. Occup. Organ. Psychol.
+Work Employ. Soc.
+Socio-Econ. Rev.
+Risk Anal.
+Bus. Strategy Environ.
+World Dev.
+Econ. Geogr.
+Reg. Stud.
+J. Acad. Mark. Sci.
+Ind. Mark. Manage.
+J. Advert.
+J. Interact. Mark.
+Psychol. Mark.
+Int. J. Res. Mark.
+J. Retail.
+Public Adm. Rev.
+Regul. Gov.
+INFORMS J. Comput.
+Technol. Forecast. Soc. Chang.
+Adm. Sci. Q.

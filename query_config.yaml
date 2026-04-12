@@ -1,31 +1,81 @@
+# query_config.yaml
+# -----------------
+# Controls how papers are retrieved each day.
+#
+# mode: "similarity"  -- use Semantic Scholar recommendations API
+#                        (requires seed_paper_positive.csv)
+# mode: "query"       -- freeform interest / keyword / prompt-based search
+
 mode: query
-user_interest: 'Textual analysis with a preference for NLP methods and a strong preference
-  for LLM-based approaches applied to management science topics. Core areas of interest
-  include: responsibility shifting in organisations, anti-fragility studies, ESG (Environmental
-  Social Governance) research, and AI adoption in firms and industries. Papers should
-  be empirical or methodological contributions, not purely theoretical or benchmark-only.
-  Preference for cross-disciplinary work bridging NLP/LLM techniques with management,
-  strategy, or organisational studies.
 
-  '
+# ── User interest (plain text, drives keyword refinement) ───────────────────
+user_interest: >
+  Textual analysis with a preference for NLP methods and a strong preference
+  for LLM-based approaches applied to management science topics. Core areas
+  of interest include: responsibility shifting in organisations, anti-fragility
+  studies, ESG (Environmental Social Governance) research, and AI adoption in
+  firms and industries. Papers should be empirical or methodological
+  contributions, not purely theoretical or benchmark-only. Preference for
+  cross-disciplinary work bridging NLP/LLM techniques with management, strategy,
+  or organisational studies.
+
+# ── Keywords (used directly for Semantic Scholar search) ────────────────────
+# Keep these tightly scoped to management science + NLP/LLM.
+# Do NOT use generic ML/CS terms alone — always pair them with a management concept.
 keywords:
-- textual analysis preference
-- analysis preference nlp
-- preference nlp methods
-- nlp methods strong
-- methods strong preference
-- strong preference llm
+  - LLM text analysis management
+  - NLP ESG corporate responsibility
+  - large language model AI adoption organisations
+  - anti-fragility resilience text mining management
+  - responsibility shifting accountability NLP
+  - natural language processing management science empirical
+  - AI governance ESG disclosure textual
+
+# ── Sources ─────────────────────────────────────────────────────────────────
+# arXiv removed: preprints are not ABS-ranked and are blocked by abs_whitelist.txt.
+# Add "arxiv" here ONLY if you also clear abs_whitelist.txt.
 sources:
-- semanticscholar
+  - semanticscholar
+
+# Maximum papers to surface per daily run
 max_papers: 10
-system_prompt: "You are a rigorous academic expert. Given a paper title, TLDR, and\
-  \ abstract, produce a concise structured summary in English. Output ONLY a JSON\
-  \ object with these exact keys:\n  problem   – one sentence: the pain point or research\
-  \ gap addressed\n  method    – the core architecture, algorithm, model, or mechanism\
-  \ used\n  innovation – the key improvement or contribution (metrics, limits resolved)\n\
-  No extra keys, no markdown fences, no preamble."
-user_prompt: 'Title: {title}
 
+# ── Summarisation prompts ────────────────────────────────────────────────────
+# These are sent to the LLM for every paper that passes the whitelist filter.
+# They are FIXED — the LLM refiner will NOT overwrite them on subsequent runs
+# because user_interest refinement is skipped once keywords are already set.
+#
+# IMPORTANT: Output must be a JSON object with exactly these three keys:
+#   problem   — what management/organisational problem does the paper address?
+#   method    — what NLP/LLM/textual method is used?
+#   innovation — what is the key empirical or methodological contribution?
+
+system_prompt: >
+  You are an expert in management science, organisational studies, and
+  computational text analysis. You evaluate academic papers for their
+  relevance to the following research agenda:
+    1. NLP and LLM methods applied to management science problems
+    2. ESG (Environmental, Social, Governance) disclosure and analysis
+    3. Responsibility shifting and accountability in organisations
+    4. Anti-fragility and resilience in firms and industries
+    5. AI adoption and governance in organisations
+  You must output ONLY a valid JSON object — no markdown fences, no preamble,
+  no extra keys. If the paper is not relevant to the agenda above, set all
+  three values to "Not relevant to research agenda".
+
+user_prompt: >
+  Evaluate the following paper for our research agenda
+  (NLP/LLM applied to management science, ESG, responsibility shifting,
+  anti-fragility, AI adoption in organisations).
+
+  Title: {title}
   TLDR: {tldr}
+  Abstract: {abstract}
 
-  Abstract: {abstract}'
+  Respond with a JSON object with exactly these keys:
+    "problem":    one sentence — the management/organisational problem addressed
+    "method":     one sentence — the NLP/LLM/textual method used
+    "innovation": one sentence — the key empirical or methodological contribution
+
+  If this paper is not relevant to the research agenda, return:
+    {{"problem": "Not relevant to research agenda", "method": "N/A", "innovation": "N/A"}}

@@ -140,11 +140,11 @@ def fetch_papers_query(cfg: dict) -> list:
         print(f"[Query] Refining freeform interest via LLM: {interest[:80]}...")
         refined = refine_interest_to_prompts(interest, client=client, cfg=llm_cfg)
         keywords = refined["keywords"]
-        # Write refined prompts back to config so they persist (and are visible to user)
-        _update_config_prompts(refined)
-        # Use refined prompts for summarisation later (patch cfg in place)
-        cfg["system_prompt"] = refined["system_prompt"]
-        cfg["user_prompt"]   = refined["user_prompt"]
+        # Write ONLY the refined keywords back to config (prompts are fixed by the user
+        # in query_config.yaml and must not be overwritten by the LLM refiner).
+        _update_config_keywords(keywords)
+        # Do NOT touch cfg["system_prompt"] or cfg["user_prompt"] here — they are
+        # read from query_config.yaml and stay as the user set them.
         print(f"[Query] Refined keywords: {keywords}")
 
     # ── Step 2 / 3: fall back to existing keywords or raw user_prompt ─────
@@ -190,6 +190,24 @@ def _update_config_prompts(refined: dict) -> None:
         print(f"[Query] query_config.yaml updated with refined prompts")
     except (OSError, yaml.YAMLError) as exc:
         print(f"  WARNING: could not persist refined prompts: {exc}")
+
+
+def _update_config_keywords(keywords: list) -> None:
+    """Write ONLY the LLM-refined keywords back to query_config.yaml.
+    system_prompt and user_prompt are NOT touched — they are the user's
+    authoritative topic definition and must not be overwritten.
+    """
+    if not os.path.exists(QUERY_CONFIG_FILE):
+        return
+    try:
+        with open(QUERY_CONFIG_FILE, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+        cfg["keywords"] = keywords
+        with open(QUERY_CONFIG_FILE, "w", encoding="utf-8") as f:
+            yaml.dump(cfg, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        print(f"[Query] query_config.yaml keywords updated: {keywords}")
+    except (OSError, yaml.YAMLError) as exc:
+        print(f"  WARNING: could not persist refined keywords: {exc}")
 
 
 def _s2_keyword_search(query: str, limit: int) -> list:
@@ -313,28 +331,44 @@ def _arxiv_search(query: str, max_results: int) -> list:
 # Shared filter / rank
 # ---------------------------------------------------------------------------
 
+def _normalise_venue(s: str) -> str:
+    """Strip punctuation/dots, lowercase, collapse whitespace.
+
+    This normalisation lets us match both full names and ISO 4 abbreviations
+    that Semantic Scholar returns in the 'venue' field, e.g.:
+        "Manag. Sci."  →  "manag sci"
+        "Management Science"  →  "management science"
+    A whitelist entry "manag sci" is then a substring of "management science"
+    (or vice-versa), so either form matches.
+    """
+    import re as _re
+    return _re.sub(r'\s+', ' ', _re.sub(r'[^a-z0-9\s]', '', s.lower())).strip()
+
+
 def _filter_and_rank(papers: list, top_n: int) -> list:
     seen_ids    = set(read_lines(HISTORY_FILE))
-    blacklisted = [v.lower() for v in read_lines(BLACKLIST_FILE)]
-    whitelisted = [v.lower() for v in read_lines(WHITELIST_FILE)]
+    blacklisted = [_normalise_venue(v) for v in read_lines(BLACKLIST_FILE)]
+    # Build normalised whitelist: both full names and ISO 4 abbreviations are in
+    # abs_whitelist.txt, so a single normalised substring check in either
+    # direction covers exact names, abbreviated names, and edge cases.
+    whitelisted = [_normalise_venue(v) for v in read_lines(WHITELIST_FILE)]
 
     filtered = []
     for p in papers:
         if p.get("paperId") in seen_ids:
             continue
-        venue = (p.get("venue") or "").lower()
+        venue = _normalise_venue(p.get("venue") or "")
 
-        # Whitelist check: if the whitelist is non-empty, the venue must
-        # substring-match at least one ABS journal entry.
-        # arXiv preprints (venue=="arxiv") do NOT receive a free pass —
-        # they are unranked and will not match any ABS entry, so they are
-        # blocked when the whitelist is active. This is the intended behaviour.
+        # Whitelist gate: if whitelist is non-empty, venue must substring-match
+        # at least one entry in either direction.  Non-journal venues (arXiv,
+        # NeurIPS, workshop proceedings, etc.) will not match any ABS entry
+        # and are therefore blocked automatically.
         if whitelisted:
-            if not any(wv in venue for wv in whitelisted):
+            if not any(wv in venue or venue in wv for wv in whitelisted):
                 continue
 
-        # Blacklist check (secondary; mostly for arXiv workshop papers etc.)
-        if blacklisted and any(bv in venue for bv in blacklisted):
+        # Blacklist gate (secondary; belt-and-braces for edge cases)
+        if blacklisted and any(bv in venue or venue in bv for bv in blacklisted):
             continue
 
         if not (p.get("abstract") or "").strip():
