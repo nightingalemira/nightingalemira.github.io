@@ -1,7 +1,24 @@
-# blacklisted_venues.txt
-# ----------------------
-# Venue names (or substrings) to exclude from results.
-# Case-insensitive. One entry per line.
-# Example:
-# workshop
-# symposium on unrelated topic
+arXiv
+bioRxiv
+medRxiv
+SSRN
+NeurIPS
+ICML
+ICLR
+CVPR
+AAAI
+ACL
+EMNLP
+NAACL
+Expert Systems with Applications
+Applied Intelligence
+Sustainability
+Computers in Human Behavior
+Kybernetes
+Symmetry
+Electronics
+Mathematics
+Sensors
+Applied Sciences
+Energies
+Water

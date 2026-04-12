@@ -1,132 +1,82 @@
 """
 llm_adapter.py
 --------------
-Unified LLM client factory supporting Ollama, OpenRouter, and KiloCode.
-All providers expose an OpenAI-compatible /v1/chat/completions endpoint.
+Unified LLM client factory supporting three providers:
+  - ollama      : local Ollama server (OpenAI-compatible)
+  - openrouter  : OpenRouter API (large free models)
+  - kilo        : KiloCode API (OpenAI-compatible)
 
-Provider selection and model defaults are driven by llm_config.yaml.
-Default free models:
-  - openrouter : nvidia/nemotron-3-super-120b-a12b:free
-  - ollama     : qwen3:latest (resolves to largest variant the host can serve;
-                 on 16 GB GPU → qwen3:30b-a3b MoE; on 8 GB GPU → qwen3:8b;
-                 run `ollama pull qwen3:latest` once before first use)
-  - kilo       : moonshotai/kmoonshot-v1-8k (check Kilo free tier)
+Usage:
+    client, cfg = get_client()          # uses LLM_CONFIG_FILE
+    response    = chat(sys, usr, client=client, cfg=cfg)
 """
 
 import os
 import yaml
 from openai import OpenAI
 
-CONFIG_FILE = "llm_config.yaml"
+LLM_CONFIG_FILE = "llm_config.yaml"
 
-# ---------------------------------------------------------------------------
-# Default models per provider (largest available on free tier, April 2026)
-# ---------------------------------------------------------------------------
+# Default (largest free) models per provider
 DEFAULT_MODELS = {
-    "openrouter": "nvidia/nemotron-3-super-120b-a12b:free",
-    "ollama":     "qwen3:latest",
-    "kilo": "kilo/auto-free",
+    "ollama":      "llama3.3:70b",
+    "openrouter":  "nvidia/nemotron-3-super-120b-a12b:free",
+    "kilo":        "kilo/free-large",
 }
 
 DEFAULT_BASE_URLS = {
+    "ollama":     os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
     "openrouter": "https://openrouter.ai/api/v1",
-    "ollama":     "http://localhost:11434/v1",
-    "kilo": "kilo/auto-free",
+    "kilo":       "https://api.kilo.codes/v1",
 }
 
-# ---------------------------------------------------------------------------
-# Config loader
-# ---------------------------------------------------------------------------
 
 def load_llm_config() -> dict:
-    """Load llm_config.yaml, falling back to env vars and defaults."""
-    cfg = {}
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-
-    # Env var takes precedence over yaml so CI secrets can override without editing config
-    provider = (os.getenv("LLM_PROVIDER") or cfg.get("provider") or "openrouter").lower().strip()
-
-    model = cfg.get("model") or os.getenv("LLM_MODEL") or DEFAULT_MODELS.get(provider, "")
-    # Provider-specific base URL env vars (e.g. OLLAMA_BASE_URL) take precedence over generic LLM_BASE_URL
-    provider_url_env = {
-        "ollama": "OLLAMA_BASE_URL",
-    }
-    base_url = (
-        cfg.get("base_url")
-        or os.getenv(provider_url_env.get(provider, ""), "")
-        or os.getenv("LLM_BASE_URL", "")
-        or DEFAULT_BASE_URLS.get(provider, "")
-    )
-    temperature = float(cfg.get("temperature", 0.3))
-    max_tokens = int(cfg.get("max_tokens", 1024))
-
-    # API key: config file → env var per provider → generic LLM_API_KEY
-    api_key_env_map = {
-        "openrouter": "OPENROUTER_API_KEY",
-        "ollama":     "OLLAMA_API_KEY",   # usually not needed; ollama accepts any string
-        "kilo": "kilo/auto-free",
-    }
-    api_key = (
-        cfg.get("api_key")
-        or os.getenv(api_key_env_map.get(provider, ""))
-        or os.getenv("LLM_API_KEY")
-        or "ollama"  # Ollama local doesn't validate the key
-    )
-
-    return {
-        "provider":    provider,
-        "model":       model,
-        "base_url":    base_url,
-        "api_key":     api_key,
-        "temperature": temperature,
-        "max_tokens":  max_tokens,
-    }
+    if not os.path.exists(LLM_CONFIG_FILE):
+        return {}
+    with open(LLM_CONFIG_FILE, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
-# ---------------------------------------------------------------------------
-# Client factory
-# ---------------------------------------------------------------------------
-
-def get_client() -> tuple:
+def get_client(provider: str = None):
     """
-    Returns (OpenAI client, config dict).
-    The config dict contains model, temperature, max_tokens for use in calls.
+    Returns (OpenAI client, cfg dict).
+    cfg contains: model, temperature, max_tokens, provider.
     """
-    cfg = load_llm_config()
-    provider = cfg["provider"]
+    file_cfg  = load_llm_config()
+    provider  = provider or file_cfg.get("provider", "openrouter")
 
-    extra_headers = {}
-    if provider == "openrouter":
-        # OpenRouter recommends these headers for tracking / free-tier priority
-        extra_headers = {
-            "HTTP-Referer": "https://github.com/TeamDailyPaper",
-            "X-Title":      "TeamDailyPaper",
-        }
+    model = file_cfg.get("model") or DEFAULT_MODELS.get(provider, "gpt-4o-mini")
 
-    client = OpenAI(
-        api_key=cfg["api_key"],
-        base_url=cfg["base_url"],
-        default_headers=extra_headers if extra_headers else None,
-    )
+    api_key = None
+    base_url = DEFAULT_BASE_URLS.get(provider)
 
-    print(f"[LLM] Provider: {provider} | Model: {cfg['model']} | Base URL: {cfg['base_url']}")
+    if provider == "ollama":
+        api_key  = os.getenv("OLLAMA_API_KEY", "ollama")
+        base_url = os.getenv("OLLAMA_BASE_URL", base_url)
+    elif provider == "openrouter":
+        api_key  = os.getenv("OPENROUTER_API_KEY", "")
+        base_url = os.getenv("OPENROUTER_BASE_URL", base_url)
+    elif provider == "kilo":
+        api_key  = os.getenv("KILO_API_KEY", "")
+        base_url = os.getenv("KILO_BASE_URL", base_url)
+    else:
+        raise ValueError(f"Unknown LLM provider: '{provider}'")
+
+    client = OpenAI(api_key=api_key or "no-key", base_url=base_url)
+    cfg = {
+        "provider":   provider,
+        "model":      model,
+        "temperature": float(file_cfg.get("temperature", 0.3)),
+        "max_tokens":  int(file_cfg.get("max_tokens", 1024)),
+    }
     return client, cfg
 
 
-# ---------------------------------------------------------------------------
-# Convenience call wrapper
-# ---------------------------------------------------------------------------
-
-def chat(system_prompt: str, user_prompt: str, client=None, cfg=None) -> str:
-    """
-    Single chat completion call.
-    Returns the assistant's reply as a plain string.
-    """
+def chat(system_prompt: str, user_prompt: str, client=None, cfg: dict = None) -> str:
+    """Send a single chat turn and return the assistant's text."""
     if client is None or cfg is None:
         client, cfg = get_client()
-
     response = client.chat.completions.create(
         model=cfg["model"],
         temperature=cfg["temperature"],
@@ -136,4 +86,4 @@ def chat(system_prompt: str, user_prompt: str, client=None, cfg=None) -> str:
             {"role": "user",   "content": user_prompt},
         ],
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content

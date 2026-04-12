@@ -1,23 +1,4 @@
-# llm_config.yaml
-# ----------------
-# LLM provider configuration for TeamDailyPaper.
-#
-# provider options: openrouter | ollama | kilo
-# When a field is left blank (""), the default for that provider is used.
-# API keys should be set as GitHub Secrets (not here).
-# See README.md for environment variable names per provider.
-
 provider: openrouter
-
-# Leave blank to use the built-in default for the selected provider:
-#   openrouter → nvidia/nemotron-3-super-120b-a12b:free   (largest free model)
-#   ollama     → qwen3:latest
-#   kilo       → moonshotai/moonshot-v1-8k
-model: ""
-
-# Leave blank to use the standard base URL for the selected provider.
-base_url: ""
-
-# Generation parameters
+model: nvidia/nemotron-3-super-120b-a12b:free
 temperature: 0.3
 max_tokens: 1024

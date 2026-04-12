@@ -1,303 +1,173 @@
-# abs_whitelist.txt
-# ------------------
-# ABS (CABS) Academic Journal Guide 2024 — Level 3, 4, and 4* journals ONLY.
-# Source: journalranking.org / charteredabs.org (AJG 2024)
-#
-# When this file is non-empty, ONLY papers from matching venues pass through.
-# Matching is case-insensitive substring: if any whitelist entry appears inside
-# the paper's venue/journal field, the paper is kept.
-#
-# Papers from arXiv (venue="arXiv") are always allowed — preprints are unranked
-# by design. Set sources: [semanticscholar] in query_config.yaml to exclude arXiv.
-
-# ── INFORMATION MANAGEMENT / INFORMATION SYSTEMS (most relevant) ──────────
-Information Systems Research
-Journal of the Association for Information Systems
-MIS Quarterly
-European Journal of Information Systems
-Information Systems Journal
-Journal of Information Technology
-Journal of Management Information Systems
-Journal of Strategic Information Systems
-Decision Support Systems
-Government Information Quarterly
-Information and Management
-Information and Organization
-Information Society
-Information Systems Frontiers
-Information Technology and People
-International Journal of Electronic Commerce
-Internet Research
-Journal of Computer-Mediated Communication
-Journal of the Association for Information Science and Technology
-JASIST
-
-# ── ETHICS / CSR / GENERAL MANAGEMENT ────────────────────────────────────
-Academy of Management Annals
+# ABS 4* journals
 Academy of Management Journal
 Academy of Management Review
 Administrative Science Quarterly
-Journal of Management
-Academy of Management Perspectives
-British Journal of Management
-Journal of Management Studies
-Academy of Management Discoveries
-Business and Society
-California Management Review
-European Management Review
-Gender and Society
-Gender, Work and Organization
-Harvard Business Review
-International Journal of Management Reviews
-Journal of Business Ethics
-Journal of Business Research
-Journal of Management Inquiry
-MIT Sloan Management Review
-
-# ── OPERATIONS RESEARCH / MANAGEMENT SCIENCE (NLP methods papers) ─────────
-Management Science
-Operations Research
-European Journal of Operational Research
-Decision Sciences
-INFORMS Journal on Computing
-International Journal of Forecasting
-Omega
-Journal of the Operational Research Society
-IEEE Transactions on Cybernetics
-IEEE Transactions on Systems, Man, and Cybernetics
-ACM Transactions on Modeling and Computer Simulation
-Annals of Operations Research
-
-# ── INNOVATION ────────────────────────────────────────────────────────────
-Research Policy
-Technological Forecasting and Social Change
-Technovation
-
-# ── ORGANISATIONAL STUDIES ────────────────────────────────────────────────
-Organization Science
-Human Relations
-Leadership Quarterly
-Organization Studies
-Organizational Research Methods
-Group and Organization Management
-Organization
-Organization and Environment
-Research in Organizational Behavior
-
-# ── STRATEGY ──────────────────────────────────────────────────────────────
-Strategic Management Journal
-Global Strategy Journal
-Long Range Planning
-Strategic Organization
-
-# ── INTERNATIONAL BUSINESS ────────────────────────────────────────────────
-Journal of International Business Studies
-Journal of World Business
-Asia Pacific Journal of Management
-International Business Review
-Journal of Common Market Studies
-Journal of International Management
-Management and Organization Review
-Management International Review
-
-# ── MARKETING ─────────────────────────────────────────────────────────────
-Journal of Consumer Psychology
-Journal of Consumer Research
-Journal of Marketing
-Journal of Marketing Research
-Journal of the Academy of Marketing Science
-Marketing Science
-International Journal of Research in Marketing
-Journal of Retailing
-European Journal of Marketing
-Industrial Marketing Management
-Journal of Advertising
-Journal of Interactive Marketing
-Psychology and Marketing
-Quantitative Marketing and Economics
-
-# ── OPERATIONS & TECHNOLOGY ───────────────────────────────────────────────
-Journal of Operations Management
-International Journal of Operations and Production Management
-Production and Operations Management
-IEEE Transactions on Engineering Management
-International Journal of Production Economics
-International Journal of Production Research
-Manufacturing and Service Operations Management
-
-# ── HRM & EMPLOYMENT ──────────────────────────────────────────────────────
-Human Resource Management Journal
-Human Resource Management
-British Journal of Industrial Relations
-Work, Employment and Society
-International Journal of Human Resource Management
-New Technology, Work and Employment
-
-# ── PUBLIC SECTOR / GOVERNANCE ───────────────────────────────────────────
-Public Administration Review
-Governance
-Journal of Public Administration Research and Theory
-Public Administration
-Public Management Review
-Regulation and Governance
-
-# ── SOCIAL SCIENCES ───────────────────────────────────────────────────────
-Risk Analysis
-Social Science and Medicine
-Business Strategy and the Environment
-World Development
-Socio-Economic Review
-
-# ── FINANCE ───────────────────────────────────────────────────────────────
-Journal of Finance
-Journal of Financial Economics
-Review of Financial Studies
-Journal of Corporate Finance
-Journal of Banking and Finance
-Review of Finance
-Financial Management
-Corporate Governance: An International Review
-
-# ── ACCOUNTING ────────────────────────────────────────────────────────────
-Accounting Review
-Accounting, Organizations and Society
-Journal of Accounting and Economics
-Journal of Accounting Research
-Contemporary Accounting Research
-Review of Accounting Studies
-Journal of Business Finance and Accounting
-Management Accounting Research
-Critical Perspectives on Accounting
-
-# ── ECONOMICS ─────────────────────────────────────────────────────────────
 American Economic Review
 Econometrica
+Journal of Finance
+Journal of Financial Economics
 Journal of Political Economy
+Management Science
+Organization Science
 Quarterly Journal of Economics
 Review of Economic Studies
-Journal of Economic Theory
-Journal of Labor Economics
-Review of Economics and Statistics
+Review of Financial Studies
+Strategic Management Journal
 
-# ── ENTREPRENEURSHIP ──────────────────────────────────────────────────────
-Entrepreneurship Theory and Practice
+# ABS 4 journals
+Accounting Organizations and Society
+British Journal of Management
+European Journal of Operational Research
+Harvard Business Review
+Information Systems Research
+Journal of Accounting and Economics
+Journal of Accounting Research
+Journal of Business Ethics
 Journal of Business Venturing
-Journal of Small Business Management
-Small Business Economics
-
-# ── PSYCHOLOGY (WORK / ORG BEHAVIOUR) ────────────────────────────────────
-Journal of Applied Psychology
-Personnel Psychology
-Journal of Occupational and Organizational Psychology
+Journal of Consumer Research
+Journal of International Business Studies
+Journal of Management
+Journal of Management Information Systems
+Journal of Management Studies
+Journal of Marketing
+Journal of Marketing Research
+Journal of Operations Management
 Journal of Organizational Behavior
+Journal of the Academy of Marketing Science
+MIS Quarterly
+Manufacturing and Service Operations Management
+Operations Research
+Organization Studies
+Personnel Psychology
+Production and Operations Management
+Research Policy
+Sloan Management Review
+The Accounting Review
+
+# ABS 3 journals
+British Accounting Review
+Business and Society
+Business Strategy and the Environment
+Corporate Governance
+Decision Sciences
+Decision Support Systems
+Entrepreneurship Theory and Practice
+European Accounting Review
+European Journal of Information Systems
+European Journal of Marketing
+European Management Journal
+Group and Organization Management
+Human Relations
+Human Resource Management
+Industrial and Corporate Change
+Information and Management
+Innovation
+International Journal of Human Resource Management
+International Journal of Operations and Production Management
+International Journal of Production Economics
+International Journal of Research in Marketing
+Journal of Applied Psychology
+Journal of Business Research
+Journal of Corporate Finance
+Journal of Economic Behavior and Organization
+Journal of Empirical Finance
+Journal of General Management
+Journal of Industrial Economics
+Journal of Information Technology
+Journal of International Marketing
+Journal of Knowledge Management
+Journal of Organizational and Occupational Psychology
+Journal of Product Innovation Management
+Journal of Public Administration Research and Theory
+Journal of Strategic Information Systems
+Journal of Supply Chain Management
+Journal of World Business
+Long Range Planning
+MIT Sloan Management Review
+Management Accounting Research
+Management and Organization Review
+Omega
 Organizational Behavior and Human Decision Processes
-Applied Psychology
-Journal of Business and Psychology
-Journal of Managerial Psychology
+Organization and Environment
+R&D Management
+Small Business Economics
+Social Science and Medicine
+Supply Chain Management
+Technovation
 
-# ── REGIONAL STUDIES ──────────────────────────────────────────────────────
-Economic Geography
-Regional Studies
-
-# ── ISO 4 ABBREVIATED FORMS (what S2 actually returns in the venue field) ─────
-# Each line below is the abbreviated form of an ABS 3+ journal above.
-# The matching logic checks both full names and these abbreviations.
-Manag. Sci.
-J. Manag. Inf. Syst.
+# Common abbreviations (ISO 4 / Semantic Scholar usage)
 Acad. Manag. J.
 Acad. Manag. Rev.
-Acad. Manag. Ann.
-Acad. Manag. Perspect.
-Acad. Manag. Discov.
-Acad. Manag. Learn. Educ.
-J. Mark.
-J. Mark. Res.
-J. Consum. Res.
-J. Consum. Psychol.
-Inf. Syst. Res.
-Eur. J. Inf. Syst.
-J. Bus. Ethics
-J. Bus. Res.
-Res. Policy
-J. Manag. Stud.
-Organ. Behav. Hum. Decis. Process.
-Organ. Sci.
-Organ. Stud.
-Strateg. Manag. J.
-J. Int. Bus. Stud.
-J. Appl. Psychol.
-J. Organ. Behav.
-Hum. Resour. Manage.
-Hum. Resour. Manage. J.
-Int. J. Hum. Resour. Manage.
-J. Finance
-J. Financ. Econ.
-J. Financ. Quant. Anal.
-Technol. Forecast. Soc. Change
-Long Range Plan.
-Eur. J. Oper. Res.
-J. Oper. Manag.
-Int. J. Oper. Prod. Manag.
-Prod. Oper. Manag.
-MIS Q.
-MISQ
-J. Assoc. Inf. Syst.
-JAIS
+Adm. Sci. Q.
+Am. Econ. Rev.
+Brit. J. Manag.
+Corp. Gov.
+Decis. Sci.
 Decis. Support Syst.
+Entrep. Theory Pract.
+Eur. Account. Rev.
+Eur. J. Inf. Syst.
+Eur. J. Mark.
+Eur. J. Oper. Res.
+Eur. Manag. J.
+Hum. Relat.
+Hum. Resour. Manag.
 Inf. Manag.
-J. Inf. Technol.
-J. Strateg. Inf. Syst.
-Internet Res.
+Inf. Syst. Res.
+Int. J. Hum. Resour. Manag.
+Int. J. Oper. Prod. Manag.
 Int. J. Prod. Econ.
-Int. J. Prod. Res.
-J. Supply Chain Manag.
-Supply Chain Manag.
-Manuf. Serv. Oper. Manag.
+Int. J. Res. Mark.
 J. Account. Econ.
 J. Account. Res.
-Account. Organ. Soc.
-Br. J. Manag.
-J. World Bus.
-J. Int. Manag.
-Int. Bus. Rev.
-Am. Econ. Rev.
-Rev. Econ. Stat.
-J. Labor Econ.
-J. Public Adm. Res. Theory
-Harv. Bus. Rev.
-MIT Sloan Manag. Rev.
-Calif. Manage. Rev.
-J. Manag. Inq.
-Bus. Soc.
-Corp. Gov. Int. Rev.
-Entrep. Theory Pract.
+J. Appl. Psychol.
+J. Bus. Ethics
+J. Bus. Res.
 J. Bus. Venturing
+J. Consum. Res.
+J. Corp. Finance
+J. Econ. Behav. Organ.
+J. Empirical Finance
+J. Finance
+J. Financ. Econ.
+J. Gen. Manag.
+J. Ind. Econ.
+J. Inf. Technol.
+J. Int. Bus. Stud.
+J. Int. Mark.
+J. Knowl. Manag.
+J. Manag.
+J. Manag. Inf. Syst.
+J. Manag. Stud.
+J. Mark.
+J. Mark. Res.
+J. Oper. Manag.
+J. Org. Behav.
+J. Polit. Econ.
+J. Prod. Innovation Manag.
+J. Pub. Admin. Res. Theory
+J. Strateg. Inf. Syst.
+J. Supply Chain Manag.
+J. World Bus.
+Long Range Plan.
+Manag. Account. Res.
+Manag. Organ. Rev.
+Manag. Sci.
+Manuf. Serv. Oper. Manag.
+MIS Q.
+MISQ
+Oper. Res.
+Organ. Behav. Hum. Decis. Process.
+Organ. Environ.
+Organ. Sci.
+Organ. Stud.
+Personnel Psychol.
+Prod. Oper. Manag.
+Q. J. Econ.
+R&D Manag.
+Res. Policy
+Rev. Econ. Stud.
+Rev. Financ. Stud.
 Small Bus. Econ.
-J. Bank. Finance
-Rev. Finance
-J. Oper. Res. Soc.
-Ann. Oper. Res.
-Comput. Oper. Res.
-Leadersh. Q.
-J. Vocat. Behav.
-Pers. Psychol.
-J. Occup. Organ. Psychol.
-Work Employ. Soc.
-Socio-Econ. Rev.
-Risk Anal.
-Bus. Strategy Environ.
-World Dev.
-Econ. Geogr.
-Reg. Stud.
-J. Acad. Mark. Sci.
-Ind. Mark. Manage.
-J. Advert.
-J. Interact. Mark.
-Psychol. Mark.
-Int. J. Res. Mark.
-J. Retail.
-Public Adm. Rev.
-Regul. Gov.
-INFORMS J. Comput.
-Technol. Forecast. Soc. Chang.
-Adm. Sci. Q.
+Strateg. Manag. J.
+Technovation

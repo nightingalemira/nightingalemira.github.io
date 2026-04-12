@@ -1,39 +1,92 @@
+# query_config.yaml
+# -----------------
 mode: query
-user_interest: 'Textual analysis with a preference for NLP methods and a strong preference
-  for LLM-based approaches applied to management science topics. Core areas of interest
-  include: responsibility shifting in organisations, anti-fragility studies, ESG (Environmental
-  Social Governance) research, and AI adoption in firms and industries. Papers should
-  be empirical or methodological contributions, not purely theoretical or benchmark-only.
-  Preference for cross-disciplinary work bridging NLP/LLM techniques with management,
-  strategy, or organisational studies.
 
-  '
+user_interest: >
+  Textual analysis with a preference for NLP methods and a strong preference
+  for LLM-based approaches applied to management science topics. Core areas
+  of interest include: responsibility shifting in organisations, anti-fragility
+  studies, ESG (Environmental Social Governance) research, and AI adoption in
+  firms and industries. Papers should be empirical or methodological
+  contributions, not purely theoretical or benchmark-only. Preference for
+  cross-disciplinary work bridging NLP/LLM techniques with management, strategy,
+  or organisational studies.
+
 keywords:
-- LLM textual analysis management
-- NLP ESG firm performance
-- AI adoption organizational studies
-- responsibility shifting NLP
-- anti-fragility LLM research
-- empirical NLP management science
-- cross-disciplinary LLM strategy
+  - LLM text analysis management
+  - NLP ESG corporate responsibility
+  - large language model AI adoption organisations
+  - anti-fragility resilience text mining management
+  - responsibility shifting accountability NLP
+  - natural language processing management science empirical
+  - AI governance ESG disclosure textual
+
 sources:
-- semanticscholar
+  - semanticscholar
+
 max_papers: 10
-system_prompt: "You are an expert in management science, organisational studies, and\
-  \ computational text analysis. You evaluate academic papers for their relevance\
-  \ to the following research agenda:\n  1. NLP and LLM methods applied to management\
-  \ science problems\n  2. ESG (Environmental, Social, Governance) disclosure and\
-  \ analysis\n  3. Responsibility shifting and accountability in organisations\n \
-  \ 4. Anti-fragility and resilience in firms and industries\n  5. AI adoption and\
-  \ governance in organisations\nYou must output ONLY a valid JSON object — no markdown\
-  \ fences, no preamble, no extra keys. If the paper is not relevant to the agenda\
-  \ above, set all three values to \"Not relevant to research agenda\".\n"
-user_prompt: "Evaluate the following paper for our research agenda (NLP/LLM applied\
-  \ to management science, ESG, responsibility shifting, anti-fragility, AI adoption\
-  \ in organisations).\nTitle: {title} TLDR: {tldr} Abstract: {abstract}\nRespond\
-  \ with a JSON object with exactly these keys:\n  \"problem\":    one sentence —\
-  \ the management/organisational problem addressed\n  \"method\":     one sentence\
-  \ — the NLP/LLM/textual method used\n  \"innovation\": one sentence — the key empirical\
-  \ or methodological contribution\n\nIf this paper is not relevant to the research\
-  \ agenda, return:\n  {{\"problem\": \"Not relevant to research agenda\", \"method\"\
-  : \"N/A\", \"innovation\": \"N/A\"}}\n"
+
+# ── Summarisation prompts ────────────────────────────────────────────────────
+# TIER DEFINITIONS:
+#   Tier 0 — NLP/LLM/text method + (ESG | responsibility shifting |
+#             anti-fragility | AI adoption in orgs) → RED FRAME highlight
+#   Tier 1 — Any NLP/LLM/textual method in management science
+#   Tier 2 — Quantitative method in management science (no text analysis)
+#   Tier 3 — Highly impactful/cited management science paper
+#   Tier 4 — Any other management science paper
+#
+# WHITELIST RULE: only ABS 3+ journals pass the retrieval filter.
+# The LLM must not attempt to override this.
+#
+# IMPORTANT: These prompts are FIXED. The LLM refiner updates only keywords.
+
+system_prompt: >
+  You are a rigorous management science research assistant.
+  Your task is to classify and summarise academic papers for a daily digest.
+
+  CLASSIFICATION TIERS (assign the LOWEST tier the paper qualifies for):
+
+  Tier 0 — PRIORITY HIGHLIGHT: paper uses NLP, LLM, corpus linguistics,
+    or textual analysis methods AND addresses one or more of these specific
+    management science topics: (a) responsibility shifting or accountability
+    in organisations, (b) anti-fragility or organisational resilience,
+    (c) ESG disclosure or corporate governance, (d) AI adoption in firms.
+
+  Tier 1 — Management science paper that uses NLP, corpus linguistics,
+    or focuses on computational/textual analysis (but NOT a Tier-0 topic).
+
+  Tier 2 — Management science paper using quantitative methods
+    (econometrics, surveys, experiments, simulations) — no textual analysis.
+
+  Tier 3 — Management science paper that is impactful/highly-cited recently
+    but does not fit Tier 0-2.
+
+  Tier 4 — Any other management science paper.
+
+  OUTPUT: a single valid JSON object — no markdown fences, no preamble — with
+  exactly these five keys:
+    "tier":       integer 0, 1, 2, 3, or 4
+    "problem":    one sentence — the management/organisational problem addressed
+    "method":     one sentence — the research method used
+    "innovation": one sentence — the key contribution
+    "topic_tags": list of up to 3 short topic tags relevant to the paper
+
+  If the paper is not a management science paper at all, set tier to 4 and
+  set problem/method/innovation to brief factual descriptions of what it IS.
+
+user_prompt: >
+  Classify and summarise the following paper for our management science digest.
+
+  Title: {title}
+  TLDR: {tldr}
+  Abstract: {abstract}
+
+  Apply the tier classification strictly:
+  - Tier 0: NLP/LLM/textual method + (responsibility shifting OR anti-fragility
+    OR ESG OR AI adoption in organisations)
+  - Tier 1: NLP/LLM/textual method in management science (any topic)
+  - Tier 2: quantitative method in management science (no textual analysis)
+  - Tier 3: impactful management science paper (any method)
+  - Tier 4: any other management science paper
+
+  Return JSON with keys: tier, problem, method, innovation, topic_tags

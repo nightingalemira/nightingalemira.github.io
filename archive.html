@@ -1,78 +1,46 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Archive — Daily Paper</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@300..700&display=swap" rel="stylesheet">
 <style>
   :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#f9f8f5;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--primary:#01696f;--primary-h:#0c4e54}
   [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--border:#393836;--text:#cdccca;--muted:#797876;--primary:#4f98a3;--primary-h:#227f8b}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;padding:2rem 1rem}
-  .container{max-width:760px;margin:0 auto}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
-  h1{font-family:'Instrument Serif',serif;font-size:clamp(1.6rem,4vw,2.4rem)}
-  a.back{color:var(--primary);text-decoration:none;font-size:.875rem}
-  a.back:hover{color:var(--primary-h)}
+  body{font-family:'Work Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;padding:2rem}
+  .container{max-width:800px;margin:0 auto}
+  h1{font-size:1.5rem;margin-bottom:1.5rem;color:var(--text)}
   table{width:100%;border-collapse:collapse;font-size:.9rem}
   th{text-align:left;padding:.5rem .75rem;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
   td{padding:.6rem .75rem;border-bottom:1px solid var(--border)}
   tr:last-child td{border-bottom:none}
-  tr:hover td{background:var(--surface)}
-  td a{color:var(--primary);text-decoration:none}
-  td a:hover{color:var(--primary-h);text-decoration:underline}
+  a{color:var(--primary);text-decoration:none}
+  a:hover{color:var(--primary-h)}
   .badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;background:color-mix(in oklab,var(--primary) 15%,var(--surface));color:var(--primary)}
-  footer{margin-top:3rem;text-align:center;font-size:.8rem;color:var(--muted)}
+  .back{display:inline-block;margin-bottom:1.5rem;color:var(--muted);font-size:.9rem}
   button.theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .6rem;cursor:pointer;color:var(--text);font-size:.85rem}
   button.theme-toggle:hover{border-color:var(--primary);color:var(--primary)}
 </style>
 </head>
 <body>
 <div class="container">
-  <header>
-    <div>
-      <a href="index.html" class="back">← Back to today</a>
-      <h1>Archive</h1>
-    </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+    <a href="index.html" class="back">← Back to today</a>
     <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">☀ Light</button>
-  </header>
-  
+  </div>
+  <h1>Archive <span class="badge">0 days</span></h1>
   <table>
     <thead><tr><th>Date</th><th>Papers</th><th>Link</th></tr></thead>
-    <tbody>
-    
-      <tr>
-        <td>2026-04-12</td>
-        <td><span class="badge">0</span></td>
-        <td><a href="2026-04-12.html">View digest →</a></td>
-      </tr>
-    
-      <tr>
-        <td>2026-04-10</td>
-        <td><span class="badge">0</span></td>
-        <td><a href="2026-04-10.html">View digest →</a></td>
-      </tr>
-    
-    </tbody>
+    <tbody></tbody>
   </table>
-  
-  <footer>Built 2026-04-12 22:20 UTC · <a href="https://github.com" style="color:var(--muted)">TeamDailyPaper</a></footer>
 </div>
 <script>
-(function(){
-  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
-  let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
-  r.setAttribute('data-theme',d);
-  t&&t.addEventListener('click',()=>{
-    d=d==='dark'?'light':'dark';
-    r.setAttribute('data-theme',d);
-    t.textContent=d==='dark'?'☀ Light':'☾ Dark';
-  });
-  t&&(t.textContent=d==='dark'?'☀ Light':'☾ Dark');
-})();
+(function(){const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+let d=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+r.setAttribute('data-theme',d);
+t&&t.addEventListener('click',()=>{d=d==='dark'?'light':'dark';r.setAttribute('data-theme',d);
+t.textContent=d==='dark'?'☀ Light':'☾ Dark';});})();
 </script>
 </body>
 </html>

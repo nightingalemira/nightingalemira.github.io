@@ -1,16 +1,17 @@
 """
 paper_tracker.py
 ----------------
-Main entry point.  Runs the full pipeline:
+Main entry point. Runs the full pipeline:
   1. Load config (query_config.yaml)
   2. Fetch papers via selected mode:
-       Mode A – similarity  : Semantic Scholar recommendations API
-       Mode B – query       : Semantic Scholar keyword search + optional arXiv
-  3. Summarise each paper with the configured LLM (via llm_adapter.py)
-  4. Write a dated JSON data file (YYYY-MM-DD.json) to root
-  5. Call site_generator.py to rebuild index.html + archive.html
+       Mode A – similarity : Semantic Scholar recommendations API
+       Mode B – query      : Semantic Scholar keyword search
+  3. Filter against ABS whitelist (only ABS 3+ journals pass)
+  4. Summarise + classify each paper by tier (0–4) via LLM
+  5. Write a dated JSON data file (YYYY-MM-DD.json)
+  6. Call site_generator.py to rebuild index.html + archive.html
 
-No WeChat, no Server酱, no push notifications.
+No WeChat. No push notifications.
 """
 
 import os
@@ -18,6 +19,7 @@ import sys
 import json
 import re
 import datetime
+from datetime import timezone
 import requests
 import yaml
 
@@ -28,14 +30,16 @@ from prompt_refiner import refine_interest_to_prompts, maybe_refresh_prompts, sy
 # Config & constants
 # ---------------------------------------------------------------------------
 
-QUERY_CONFIG_FILE   = "query_config.yaml"
-HISTORY_FILE        = "seen_papers.txt"
-BLACKLIST_FILE      = "blacklisted_venues.txt"
-WHITELIST_FILE      = "abs_whitelist.txt"   # ABS 3+ journal whitelist; empty = allow all
-SEED_POSITIVE_FILE  = "seed_paper_positive.csv"
-SEED_NEGATIVE_FILE  = "seed_paper_negative.csv"
-MAX_S2_RESULTS      = 100
-TOP_N_PAPERS        = 10
+QUERY_CONFIG_FILE  = "query_config.yaml"
+LLM_CONFIG_FILE    = "llm_config.yaml"
+HISTORY_FILE       = "seen_papers.txt"
+BLACKLIST_FILE     = "blacklisted_venues.txt"
+WHITELIST_FILE     = "abs_whitelist.txt"
+SEED_POSITIVE_FILE = "seed_paper_positive.csv"
+SEED_NEGATIVE_FILE = "seed_paper_negative.csv"
+MAX_S2_RESULTS     = 100
+TOP_N_PAPERS       = 10
+ARXIV_TIMEOUT      = 90
 
 S2_BASE = "https://api.semanticscholar.org"
 
@@ -48,131 +52,216 @@ def read_lines(path: str) -> list:
     if not os.path.exists(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
-        return [l.strip() for l in f if l.strip() and not l.strip().startswith("#")]
+        return [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
 
 def load_query_config() -> dict:
-    cfg = {}
-    if os.path.exists(QUERY_CONFIG_FILE):
-        with open(QUERY_CONFIG_FILE, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-    # Normalise keywords: YAML may deliver a plain string if user forgets list syntax
-    raw_keywords = cfg.get("keywords", [])
-    if isinstance(raw_keywords, str):
-        keywords = [k.strip() for k in raw_keywords.split(",") if k.strip()]
-    elif isinstance(raw_keywords, list):
-        keywords = [str(k).strip() for k in raw_keywords if str(k).strip()]
-    else:
-        keywords = []
-
-    return {
-        "mode":          cfg.get("mode", "similarity"),          # "similarity" | "query"
-        "keywords":      keywords,
-        "system_prompt": cfg.get("system_prompt", ""),
-        "user_prompt":   cfg.get("user_prompt", ""),
-        "user_interest": cfg.get("user_interest", ""),           # freeform interest text
-        "max_papers":    int(cfg.get("max_papers", TOP_N_PAPERS)),
-        "sources":       cfg.get("sources", ["semanticscholar"]),  # ["semanticscholar","arxiv"]
-    }
+    if not os.path.exists(QUERY_CONFIG_FILE):
+        return {"mode": "query", "keywords": [], "sources": ["semanticscholar"],
+                "max_papers": TOP_N_PAPERS}
+    with open(QUERY_CONFIG_FILE, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    cfg.setdefault("mode", "query")
+    cfg.setdefault("keywords", [])
+    cfg.setdefault("sources", ["semanticscholar"])
+    cfg.setdefault("max_papers", TOP_N_PAPERS)
+    return cfg
 
 
 # ---------------------------------------------------------------------------
-# Mode A – Semantic Scholar similarity/recommendations
+# Venue normalisation + whitelist filter
+# ---------------------------------------------------------------------------
+
+def _normalise_venue(s: str) -> str:
+    """Strip punctuation/dots, lowercase, collapse whitespace.
+
+    Lets us match both full names and ISO 4 abbreviations that Semantic
+    Scholar returns in the 'venue' field, e.g.:
+        "Manag. Sci."           -> "manag sci"
+        "Management Science"    -> "management science"
+    """
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9\s]', '', s.lower())).strip()
+
+
+def _filter_and_rank(papers: list, top_n: int) -> list:
+    seen_ids    = set(read_lines(HISTORY_FILE))
+    blacklisted = [_normalise_venue(v) for v in read_lines(BLACKLIST_FILE)]
+    whitelisted = [_normalise_venue(v) for v in read_lines(WHITELIST_FILE)]
+
+    filtered = []
+    for p in papers:
+        if p.get("paperId") in seen_ids:
+            continue
+        venue = _normalise_venue(p.get("venue") or "")
+
+        # Whitelist gate: venue must substring-match at least one ABS entry
+        # in either direction (handles both full names and ISO 4 abbrev).
+        if whitelisted:
+            if not any(wv in venue or venue in wv for wv in whitelisted):
+                continue
+
+        # Blacklist gate (belt-and-braces)
+        if blacklisted and any(bv in venue or venue in bv for bv in blacklisted):
+            continue
+
+        if not (p.get("abstract") or "").strip():
+            continue
+        filtered.append(p)
+
+    return filtered[:top_n]
+
+
+# ---------------------------------------------------------------------------
+# Semantic Scholar helpers
+# ---------------------------------------------------------------------------
+
+def _s2_tldr_batch(paper_ids: list) -> dict:
+    if not paper_ids:
+        return {}
+    s2_key  = os.getenv("S2_API_KEY", "")
+    headers = {"x-api-key": s2_key} if s2_key else {}
+    url     = f"{S2_BASE}/graph/v1/paper/batch"
+    payload = {"ids": paper_ids[:500]}
+    params  = {"fields": "paperId,tldr"}
+    try:
+        r = requests.post(url, headers=headers, params=params,
+                          json=payload, timeout=30)
+        r.raise_for_status()
+        tldr_map = {}
+        for item in r.json():
+            pid  = item.get("paperId", "")
+            tldr = (item.get("tldr") or {}).get("text", "")
+            if pid and tldr:
+                tldr_map[pid] = tldr
+        return tldr_map
+    except Exception as exc:
+        print(f"  WARNING: TLDR batch fetch failed: {exc}")
+        return {}
+
+
+def _enrich_tldr(papers: list) -> None:
+    ids      = [p["paperId"] for p in papers if p.get("paperId")]
+    tldr_map = _s2_tldr_batch(ids)
+    for p in papers:
+        p.setdefault("tldrText", tldr_map.get(p.get("paperId"), ""))
+
+
+# ---------------------------------------------------------------------------
+# Mode A: Semantic Scholar similarity (seed papers)
 # ---------------------------------------------------------------------------
 
 def fetch_papers_similarity(cfg: dict) -> list:
-    """Use S2 recommendations API with positive/negative seed papers."""
-    s2_key = os.getenv("S2_API_KEY", "")
+    import csv
+    s2_key  = os.getenv("S2_API_KEY", "")
     headers = {"x-api-key": s2_key} if s2_key else {}
 
-    positive = read_lines(SEED_POSITIVE_FILE)
-    negative = read_lines(SEED_NEGATIVE_FILE)
+    def read_seed_ids(path):
+        if not os.path.exists(path):
+            return []
+        with open(path, newline="", encoding="utf-8") as f:
+            return [row[0].strip() for row in csv.reader(f) if row and row[0].strip()]
 
-    print(f"[Similarity] Positive seeds: {len(positive)}, Negative seeds: {len(negative)}")
-    if not positive:
-        print("ERROR: At least one positive seed paper ID is required for similarity mode.")
+    pos_ids = read_seed_ids(SEED_POSITIVE_FILE)
+    neg_ids = read_seed_ids(SEED_NEGATIVE_FILE)
+
+    if not pos_ids:
+        print("[Similarity] No positive seed papers found. Add IDs to seed_paper_positive.csv")
         return []
 
-    payload = {
-        "positivePaperIds": positive,
-        "negativePaperIds": negative,
-    }
+    url    = f"{S2_BASE}/recommendations/v1/papers"
+    params = {"fields": "paperId,title,abstract,venue,publicationDate,year,authors,externalIds,url",
+              "limit": MAX_S2_RESULTS}
+    body   = {"positivePaperIds": pos_ids[:100], "negativePaperIds": neg_ids[:100]}
+
+    try:
+        r = requests.post(url, headers=headers, params=params, json=body, timeout=30)
+        r.raise_for_status()
+        raw = r.json().get("recommendedPapers", [])
+        print(f"[Similarity] S2 returned {len(raw)} candidates")
+    except Exception as exc:
+        print(f"  ERROR: S2 recommendations API failed: {exc}")
+        return []
+
+    filtered = _filter_and_rank(raw, cfg.get("max_papers", TOP_N_PAPERS))
+    _enrich_tldr(filtered)
+    print(f"[Similarity] {len(filtered)} papers passed filter")
+    return filtered
+
+
+# ---------------------------------------------------------------------------
+# Mode B: Keyword / query search
+# ---------------------------------------------------------------------------
+
+def _s2_keyword_search(query: str, limit: int) -> list:
+    """Search S2 filtered to management-relevant fields of study.
+
+    fieldsOfStudy restricts to Business / Economics / Sociology etc.
+    so pure ML/NLP benchmark papers don't crowd out management papers.
+    publicationTypes=JournalArticle ensures only journal papers (ABS-rankable).
+    Computer Science intentionally omitted.
+    """
+    s2_key  = os.getenv("S2_API_KEY", "")
+    headers = {"x-api-key": s2_key} if s2_key else {}
+
+    FIELDS_OF_STUDY = ",".join([
+        "Business", "Economics", "Sociology",
+        "Psychology", "Political Science", "Environmental Science",
+    ])
+
     params = {
-        "fields": "paperId,title,abstract,authors,url,venue,externalIds,publicationDate,year",
-        "limit":  MAX_S2_RESULTS,
+        "query":            query,
+        "fields":           "paperId,title,abstract,venue,publicationDate,year,authors,externalIds,url",
+        "limit":            min(limit, 100),
+        "fieldsOfStudy":    FIELDS_OF_STUDY,
+        "publicationTypes": "JournalArticle",
     }
-    url = f"{S2_BASE}/recommendations/v1/papers"
-    resp = requests.post(url, json=payload, headers=headers, params=params, timeout=30)
-
-    if resp.status_code != 200:
-        print(f"ERROR: S2 recommendations API returned {resp.status_code}: {resp.text[:200]}")
+    url = f"{S2_BASE}/graph/v1/paper/search"
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=30)
+        r.raise_for_status()
+        return r.json().get("data", [])
+    except Exception as exc:
+        print(f"  WARNING: S2 search failed for '{query}': {exc}")
         return []
 
-    raw = resp.json().get("recommendedPapers", [])
-    return _filter_and_rank(raw, cfg["max_papers"])
 
-
-# ---------------------------------------------------------------------------
-# Mode B – Direct keyword/prompt query
-# ---------------------------------------------------------------------------
-
-def fetch_papers_query(cfg: dict) -> list:
-    """
-    Search S2 and/or arXiv using directives derived from the user's freeform
-    research interest.  The pipeline is:
-
-      1. If user_interest is set in query_config.yaml, ask the LLM to convert
-         it into precise keywords + focused summarisation prompts, then cache
-         them back into the config so subsequent runs can run without an LLM
-         call until the interest or feedback changes.
-      2. Fall back to any explicit keywords already in the config.
-      3. Fall back to user_prompt text as the raw query string.
-      4. Search S2 and/or arXiv with the resolved keywords.
-    """
-    client, llm_cfg = get_client()
-
-    interest   = cfg.get("user_interest", "").strip()
-    keywords   = cfg.get("keywords", [])
-    user_prompt_raw = cfg.get("user_prompt", "")
-
-    # ── Step 1: LLM refinement from freeform interest ─────────────────────
-    if interest:
-        print(f"[Query] Refining freeform interest via LLM: {interest[:80]}...")
-        refined = refine_interest_to_prompts(interest, client=client, cfg=llm_cfg)
-        keywords = refined["keywords"]
-        # Write ONLY the refined keywords back to config (prompts are fixed by the user
-        # in query_config.yaml and must not be overwritten by the LLM refiner).
-        _update_config_keywords(keywords)
-        # Do NOT touch cfg["system_prompt"] or cfg["user_prompt"] here — they are
-        # read from query_config.yaml and stay as the user set them.
-        print(f"[Query] Refined keywords: {keywords}")
-
-    # ── Step 2 / 3: fall back to existing keywords or raw user_prompt ─────
-    if not keywords:
-        keywords = [user_prompt_raw] if user_prompt_raw else []
-    if not keywords:
-        print("ERROR: query mode requires user_interest, keywords, or user_prompt in query_config.yaml")
+def _arxiv_search(query: str, limit: int) -> list:
+    """arXiv search (only used if 'arxiv' is in sources config)."""
+    import urllib.parse
+    base = "http://export.arxiv.org/api/query"
+    params = urllib.parse.urlencode({
+        "search_query": f"all:{query}",
+        "start": 0, "max_results": limit,
+        "sortBy": "submittedDate", "sortOrder": "descending"
+    })
+    url = f"{base}?{params}"
+    try:
+        r = requests.get(url, timeout=ARXIV_TIMEOUT)
+        r.raise_for_status()
+    except Exception as exc:
+        print(f"  WARNING: arXiv search failed for '{query}': {exc}")
         return []
 
-    query_str = " ".join(keywords)
-    sources   = cfg.get("sources", ["semanticscholar"])
-    papers    = []
-
-    if "semanticscholar" in sources:
-        papers += _s2_keyword_search(query_str, cfg["max_papers"] * 3)
-    if "arxiv" in sources:
-        papers += _arxiv_search(query_str, cfg["max_papers"] * 2)
-
-    # Deduplicate by title (lower-cased)
-    seen_titles = set()
-    deduped = []
-    for p in papers:
-        t = (p.get("title") or "").lower().strip()
-        if t and t not in seen_titles:
-            seen_titles.add(t)
-            deduped.append(p)
-
-    return _filter_and_rank(deduped, cfg["max_papers"])
+    import xml.etree.ElementTree as ET
+    ns   = {"atom": "http://www.w3.org/2005/Atom"}
+    root = ET.fromstring(r.text)
+    papers = []
+    for entry in root.findall("atom:entry", ns):
+        pid_url = (entry.findtext("atom:id", "", ns) or "").strip()
+        arxiv_id = pid_url.split("/abs/")[-1].replace("/", "_")
+        papers.append({
+            "paperId":         f"arxiv_{arxiv_id}",
+            "title":           (entry.findtext("atom:title", "", ns) or "").strip().replace("\n", " "),
+            "abstract":        (entry.findtext("atom:summary", "", ns) or "").strip().replace("\n", " "),
+            "venue":           "arXiv",
+            "publicationDate": (entry.findtext("atom:published", "", ns) or "")[:10],
+            "year":            None,
+            "authors":         [{"name": a.findtext("atom:name", "", ns)}
+                                for a in entry.findall("atom:author", ns)],
+            "externalIds":     {},
+            "url":             pid_url,
+        })
+    return papers
 
 
 def _update_config_prompts(refined: dict) -> None:
@@ -183,11 +272,11 @@ def _update_config_prompts(refined: dict) -> None:
         with open(QUERY_CONFIG_FILE, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
         cfg["keywords"]      = refined["keywords"]
-        cfg["system_prompt"] = refined.get("system_prompt", cfg.get("system_prompt",""))
-        cfg["user_prompt"]   = refined.get("user_prompt",   cfg.get("user_prompt",""))
+        cfg["system_prompt"] = refined.get("system_prompt", cfg.get("system_prompt", ""))
+        cfg["user_prompt"]   = refined.get("user_prompt",   cfg.get("user_prompt", ""))
         with open(QUERY_CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.dump(cfg, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        print(f"[Query] query_config.yaml updated with refined prompts")
+        print("[Query] query_config.yaml updated with refined prompts")
     except (OSError, yaml.YAMLError) as exc:
         print(f"  WARNING: could not persist refined prompts: {exc}")
 
@@ -210,281 +299,147 @@ def _update_config_keywords(keywords: list) -> None:
         print(f"  WARNING: could not persist refined keywords: {exc}")
 
 
-def _s2_keyword_search(query: str, limit: int) -> list:
-    """Search S2 filtered to management-relevant fields of study.
+def fetch_papers_query(cfg: dict) -> list:
+    """Fetch papers using keyword/prompt-based search."""
+    client, llm_cfg = get_client()
+    interest  = cfg.get("user_interest", "")
+    keywords  = cfg.get("keywords", [])
+    sources   = cfg.get("sources", ["semanticscholar"])
+    max_pap   = cfg.get("max_papers", TOP_N_PAPERS)
+    per_query = max(5, MAX_S2_RESULTS // max(len(keywords), 1))
 
-    fieldsOfStudy restricts results to Business / Economics / Sociology etc.
-    so that pure ML/NLP benchmark papers don't crowd out management papers.
-    Cross-disciplinary NLP+management papers are indexed under Business or
-    Economics in S2, so they are still returned.
-    publicationTypes=JournalArticle ensures only journal papers come back —
-    which aligns with the ABS whitelist (conference papers are not ABS-ranked).
-    """
-    s2_key = os.getenv("S2_API_KEY", "")
-    headers = {"x-api-key": s2_key} if s2_key else {}
+    # If user_interest is set but no keywords yet, refine via LLM
+    if interest and not keywords:
+        print("[Query] Refining user interest to keywords via LLM...")
+        refined  = refine_interest_to_prompts(interest, client=client, cfg=llm_cfg)
+        keywords = refined["keywords"]
+        # Only keywords are persisted; system/user prompts stay as authored
+        _update_config_keywords(keywords)
+        print(f"[Query] Refined keywords: {keywords}")
 
-    # S2 field-of-study slugs covering management / business / social science.
-    # "Computer Science" is intentionally omitted — pure CS/ML papers should not
-    # dominate. Cross-disciplinary work appears under Business or Economics.
-    FIELDS_OF_STUDY = ",".join([
-        "Business",
-        "Economics",
-        "Sociology",
-        "Psychology",
-        "Political Science",
-        "Environmental Science",
-    ])
-
-    params = {
-        "query":            query,
-        "fields":           ("paperId,title,abstract,authors,url,venue,"
-                             "externalIds,publicationDate,year"),
-        "fieldsOfStudy":    FIELDS_OF_STUDY,
-        "publicationTypes": "JournalArticle",
-        "limit":            min(limit, 100),
-    }
-    url = f"{S2_BASE}/graph/v1/paper/search"
-    resp = requests.get(url, headers=headers, params=params, timeout=30)
-    if resp.status_code != 200:
-        print(f"WARNING: S2 search returned {resp.status_code}: {resp.text[:200]}")
-        return []
-    return resp.json().get("data", [])
-
-
-def _arxiv_search(query: str, max_results: int) -> list:
-    """Fetch from arXiv Atom feed and normalise to S2-like dicts.
-
-    Retries up to 3 times with exponential back-off (10 s, 20 s, 40 s).
-    On persistent failure returns [] so the rest of the pipeline still runs.
-    """
-    import xml.etree.ElementTree as ET
-    import time
-    from requests.exceptions import ReadTimeout, ConnectionError as ReqConnError
-
-    encoded = requests.utils.quote(query)
-    url = (
-        f"https://export.arxiv.org/api/query"
-        f"?search_query=all:{encoded}&start=0&max_results={max_results}"
-        f"&sortBy=submittedDate&sortOrder=descending"
-    )
-
-    ARXIV_TIMEOUT = 90          # seconds — arXiv is slow under load on CI runners
-    MAX_RETRIES   = 3
-    BACKOFF_BASE  = 10          # seconds; doubles each retry: 10, 20, 40
-
-    resp = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            resp = requests.get(url, timeout=ARXIV_TIMEOUT)
-            break                   # success — exit retry loop
-        except (ReadTimeout, ReqConnError) as exc:
-            wait = BACKOFF_BASE * (2 ** (attempt - 1))
-            if attempt < MAX_RETRIES:
-                print(f"WARNING: arXiv attempt {attempt} failed ({exc.__class__.__name__}). "
-                      f"Retrying in {wait} s…")
-                time.sleep(wait)
-            else:
-                print(f"WARNING: arXiv search failed after {MAX_RETRIES} attempts "
-                      f"({exc.__class__.__name__}). Skipping arXiv results for today.")
-                return []
-
-    if resp.status_code != 200:
-        print(f"WARNING: arXiv search returned {resp.status_code}")
+    if not keywords:
+        print("  WARNING: No keywords configured. Add keywords to query_config.yaml")
         return []
 
-    ns = {"atom": "http://www.w3.org/2005/Atom"}
-    try:
-        root = ET.fromstring(resp.text)
-    except ET.ParseError as exc:
-        print(f"WARNING: arXiv returned malformed XML: {exc}")
-        return []
-    papers = []
-    for entry in root.findall("atom:entry", ns):
-        title    = (entry.findtext("atom:title", "", ns) or "").strip().replace("\n", " ")
-        abstract = (entry.findtext("atom:summary", "", ns) or "").strip()
-        pub_date = (entry.findtext("atom:published", "", ns) or "")[:10]
-        arxiv_id = re.sub(
-            r"v\d+$", "",
-            (entry.findtext("atom:id", "", ns) or "").split("/abs/")[-1]
-        )
-        link     = f"https://arxiv.org/abs/{arxiv_id}"
-        authors  = [
-            {"name": a.findtext("atom:name", "", ns)}
-            for a in entry.findall("atom:author", ns)
-        ]
-        papers.append({
-            "paperId":         f"arxiv:{arxiv_id}",
-            "title":           title,
-            "abstract":        abstract,
-            "authors":         authors,
-            "url":             link,
-            "venue":           "arXiv",
-            "externalIds":     {"ArXiv": arxiv_id},
-            "publicationDate": pub_date,
-            "year":            int(pub_date[:4]) if pub_date else None,
-            "tldrText":        "",
-        })
-    return papers
+    raw_papers = []
+    seen_in_batch = set()
+
+    for kw in keywords:
+        print(f"[Query] Searching: '{kw}'")
+        if "semanticscholar" in sources:
+            batch = _s2_keyword_search(kw, per_query)
+            for p in batch:
+                if p.get("paperId") and p["paperId"] not in seen_in_batch:
+                    seen_in_batch.add(p["paperId"])
+                    raw_papers.append(p)
+        if "arxiv" in sources:
+            batch = _arxiv_search(kw, per_query)
+            for p in batch:
+                if p.get("paperId") and p["paperId"] not in seen_in_batch:
+                    seen_in_batch.add(p["paperId"])
+                    raw_papers.append(p)
+
+    print(f"[Query] Total raw candidates: {len(raw_papers)}")
+    filtered = _filter_and_rank(raw_papers, max_pap)
+    _enrich_tldr(filtered)
+    print(f"[Query] {len(filtered)} papers passed whitelist filter")
+    return filtered
 
 
 # ---------------------------------------------------------------------------
-# Shared filter / rank
-# ---------------------------------------------------------------------------
-
-def _normalise_venue(s: str) -> str:
-    """Strip punctuation/dots, lowercase, collapse whitespace.
-
-    This normalisation lets us match both full names and ISO 4 abbreviations
-    that Semantic Scholar returns in the 'venue' field, e.g.:
-        "Manag. Sci."  →  "manag sci"
-        "Management Science"  →  "management science"
-    A whitelist entry "manag sci" is then a substring of "management science"
-    (or vice-versa), so either form matches.
-    """
-    import re as _re
-    return _re.sub(r'\s+', ' ', _re.sub(r'[^a-z0-9\s]', '', s.lower())).strip()
-
-
-def _filter_and_rank(papers: list, top_n: int) -> list:
-    seen_ids    = set(read_lines(HISTORY_FILE))
-    blacklisted = [_normalise_venue(v) for v in read_lines(BLACKLIST_FILE)]
-    # Build normalised whitelist: both full names and ISO 4 abbreviations are in
-    # abs_whitelist.txt, so a single normalised substring check in either
-    # direction covers exact names, abbreviated names, and edge cases.
-    whitelisted = [_normalise_venue(v) for v in read_lines(WHITELIST_FILE)]
-
-    filtered = []
-    for p in papers:
-        if p.get("paperId") in seen_ids:
-            continue
-        venue = _normalise_venue(p.get("venue") or "")
-
-        # Whitelist gate: if whitelist is non-empty, venue must substring-match
-        # at least one entry in either direction.  Non-journal venues (arXiv,
-        # NeurIPS, workshop proceedings, etc.) will not match any ABS entry
-        # and are therefore blocked automatically.
-        if whitelisted:
-            if not any(wv in venue or venue in wv for wv in whitelisted):
-                continue
-
-        # Blacklist gate (secondary; belt-and-braces for edge cases)
-        if blacklisted and any(bv in venue or venue in bv for bv in blacklisted):
-            continue
-
-        if not (p.get("abstract") or "").strip():
-            continue
-        filtered.append(p)
-
-    # Sort newest-first
-    def _date_key(p):
-        d = p.get("publicationDate") or ""
-        if d:
-            return d
-        y = p.get("year")
-        return f"{y}-12-31" if y else "1900-01-01"
-
-    filtered.sort(key=_date_key, reverse=True)
-    top = filtered[:top_n]
-
-    # Enrich with TLDR via S2 batch (best-effort)
-    _enrich_tldr(top)
-    return top
-
-
-def _enrich_tldr(papers: list):
-    """Batch-fetch TLDR from S2 for papers that have a real S2 paperId."""
-    s2_key  = os.getenv("S2_API_KEY", "")
-    headers = {"x-api-key": s2_key} if s2_key else {}
-
-    s2_papers = [p for p in papers if not p.get("paperId", "").startswith("arxiv:")]
-    if not s2_papers:
-        for p in papers:
-            p.setdefault("tldrText", "")
-        return
-
-    ids = [p["paperId"] for p in s2_papers]
-    resp = requests.post(
-        f"{S2_BASE}/graph/v1/paper/batch",
-        json={"ids": ids},
-        headers=headers,
-        params={"fields": "paperId,tldr"},
-        timeout=30,
-    )
-    tldr_map = {}
-    if resp.status_code == 200:
-        for item in resp.json():
-            if item and isinstance(item.get("tldr"), dict):
-                tldr_map[item["paperId"]] = (item["tldr"].get("text") or "").strip()
-
-    for p in papers:
-        p.setdefault("tldrText", tldr_map.get(p.get("paperId"), ""))
-
-
-# ---------------------------------------------------------------------------
-# LLM summarisation
+# LLM summarisation + tier classification
 # ---------------------------------------------------------------------------
 
 SUMMARISE_SYSTEM = """\
-You are a rigorous academic expert. Given a paper title, TLDR, and abstract, \
-produce a concise structured summary in English. \
-Output ONLY a JSON object with these exact keys:
-  problem   – one sentence: the pain point or research gap addressed
-  method    – the core architecture, algorithm, model, or mechanism used
-  innovation – the key improvement or contribution (metrics, limits resolved)
-No extra keys, no markdown fences, no preamble."""
+You are a rigorous management science research assistant.
+Your task is to classify and summarise academic papers for a daily digest.
+
+CLASSIFICATION TIERS (assign the LOWEST tier the paper qualifies for):
+
+Tier 0 — PRIORITY HIGHLIGHT: paper uses NLP, LLM, corpus linguistics,
+  or textual analysis methods AND addresses one or more of these specific
+  management science topics: (a) responsibility shifting or accountability
+  in organisations, (b) anti-fragility or organisational resilience,
+  (c) ESG disclosure or corporate governance, (d) AI adoption in firms.
+
+Tier 1 — Management science paper that uses NLP, corpus linguistics,
+  or focuses on computational/textual analysis (but NOT a Tier-0 topic).
+
+Tier 2 — Management science paper using quantitative methods
+  (econometrics, surveys, experiments, simulations) — no textual analysis.
+
+Tier 3 — Management science paper that is impactful/highly-cited recently
+  but does not fit Tier 0-2.
+
+Tier 4 — Any other management science paper.
+
+OUTPUT: a single valid JSON object — no markdown fences, no preamble — with
+exactly these five keys:
+  "tier":       integer 0, 1, 2, 3, or 4
+  "problem":    one sentence — the management/organisational problem addressed
+  "method":     one sentence — the research method used
+  "innovation": one sentence — the key contribution
+  "topic_tags": list of up to 3 short topic tags relevant to the paper
+
+If the paper is not a management science paper at all, set tier to 4 and
+set problem/method/innovation to brief factual descriptions of what it IS."""
 
 SUMMARISE_USER = """\
+Classify and summarise the following paper for our management science digest.
+
 Title: {title}
 TLDR: {tldr}
-Abstract: {abstract}"""
+Abstract: {abstract}
 
+Apply the tier classification strictly:
+- Tier 0: NLP/LLM/textual method + (responsibility shifting OR anti-fragility
+  OR ESG OR AI adoption in organisations)
+- Tier 1: NLP/LLM/textual method in management science (any topic)
+- Tier 2: quantitative method in management science (no textual analysis)
+- Tier 3: impactful management science paper (any method)
+- Tier 4: any other management science paper
+
+Return JSON with keys: tier, problem, method, innovation, topic_tags"""
 
 
 def _extract_json(raw: str) -> dict:
-    """Robustly extract a JSON object from LLM output.
-    Handles: code fences, preamble text, trailing commas, single backticks."""
-    # 1. Try direct parse first (clean output, no fences)
+    """Robustly extract a JSON object from LLM output."""
     try:
         return json.loads(raw.strip())
     except (json.JSONDecodeError, ValueError):
         pass
-    # 2. Extract from ```json ... ``` or ``` ... ``` fence
     fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
     if fence_match:
         try:
             return json.loads(fence_match.group(1))
         except (json.JSONDecodeError, ValueError):
             pass
-    # 3. Grab the first {...} block anywhere (handles preamble text)
     brace_match = re.search(r"\{[^{}]*\}", raw, re.DOTALL)
     if brace_match:
         try:
             return json.loads(brace_match.group(0))
         except (json.JSONDecodeError, ValueError):
-            # 4. Try removing trailing commas (common LLM mistake)
             cleaned = re.sub(r",\s*([}\]])", r"\1", brace_match.group(0))
             try:
                 return json.loads(cleaned)
             except (json.JSONDecodeError, ValueError):
                 pass
-    # 5. Give up — store the raw text as the problem field
     return {"problem": raw.strip(), "method": "", "innovation": ""}
 
 
 def _safe_format(template: str, **kwargs) -> str:
-    """Single-pass substitution — all keys are replaced simultaneously so
-    placeholder text inside values is never re-interpreted as a template token."""
+    """Single-pass substitution — all keys replaced simultaneously."""
     if not kwargs:
         return template
     pattern = "|".join(re.escape("{" + k + "}") for k in kwargs)
     return re.sub(pattern, lambda m: str(kwargs[m.group(0)[1:-1]]), template)
 
+
 def summarise_papers(papers: list, query_cfg: dict) -> list:
     client, llm_cfg = get_client()
 
-    # Allow query_config.yaml to override the system/user prompts
-    sys_prompt  = query_cfg.get("system_prompt") or SUMMARISE_SYSTEM
-    user_tmpl   = query_cfg.get("user_prompt")   or SUMMARISE_USER
+    sys_prompt = query_cfg.get("system_prompt") or SUMMARISE_SYSTEM
+    user_tmpl  = query_cfg.get("user_prompt")   or SUMMARISE_USER
 
     results = []
     for idx, p in enumerate(papers):
@@ -492,7 +447,6 @@ def summarise_papers(papers: list, query_cfg: dict) -> list:
         abstract = (p.get("abstract") or "").strip() or "No abstract available."
         tldr     = (p.get("tldrText") or "").strip() or "N/A"
 
-        # Build DOI / URL
         doi = ""
         ext = p.get("externalIds")
         if isinstance(ext, dict):
@@ -503,7 +457,6 @@ def summarise_papers(papers: list, query_cfg: dict) -> list:
             or f"https://www.semanticscholar.org/paper/{p.get('paperId','')}"
         )
 
-        # Authors (truncate if > 4)
         authors_list = p.get("authors", [])
         if len(authors_list) > 4:
             names = [authors_list[0].get("name","?"), authors_list[1].get("name","?"),
@@ -517,24 +470,52 @@ def summarise_papers(papers: list, query_cfg: dict) -> list:
 
         print(f"[LLM] Summarising [{idx+1}/{len(papers)}]: {title[:70]}...")
         try:
-            raw = chat(sys_prompt, user_msg, client=client, cfg=llm_cfg)
+            raw     = chat(sys_prompt, user_msg, client=client, cfg=llm_cfg)
             summary = _extract_json(raw)
         except Exception as exc:
-            print(f"  WARNING: LLM call failed for paper {idx+1} ({title[:50]}): {exc}")
+            print(f"  WARNING: LLM call failed for paper {idx+1}: {exc}")
             summary = {"problem": "LLM summarisation failed.", "method": "", "innovation": ""}
 
+        # Extract tier (0–4); default 4 if missing or out-of-range
+        try:
+            tier = int(summary.get("tier", 4))
+            if tier not in (0, 1, 2, 3, 4):
+                tier = 4
+        except (TypeError, ValueError):
+            tier = 4
+
+        topic_tags = summary.get("topic_tags", [])
+        if not isinstance(topic_tags, list):
+            topic_tags = []
+
+        # Keep summary dict clean — tier and topic_tags live on the paper, not inside summary
+        clean_summary = {k: v for k, v in summary.items()
+                         if k not in ("tier", "topic_tags")}
+
         results.append({
-            "paperId":   p.get("paperId", ""),
-            "title":     title,
-            "url":       paper_url,
-            "venue":     (p.get("venue") or "Unknown venue").strip(),
-            "authors":   authors_str,
-            "date":      p.get("publicationDate") or str(p.get("year", "")),
-            "abstract":  abstract,
-            "tldr":      tldr,
-            "summary":   summary,
+            "paperId":    p.get("paperId", ""),
+            "title":      title,
+            "url":        paper_url,
+            "venue":      (p.get("venue") or "Unknown venue").strip(),
+            "authors":    authors_str,
+            "date":       p.get("publicationDate") or str(p.get("year", "")),
+            "abstract":   abstract,
+            "tldr":       tldr,
+            "summary":    clean_summary,
+            "tier":       tier,
+            "topic_tags": topic_tags,
         })
 
+    # Sort: tier ascending (0 first), then date descending within each tier
+    def _sort_key(p):
+        date_str = (p.get("date") or "0000-01-01")[:10].replace("-", "")
+        try:
+            date_int = int(date_str)
+        except ValueError:
+            date_int = 0
+        return (p["tier"], -date_int)
+
+    results.sort(key=_sort_key)
     return results
 
 
@@ -575,13 +556,11 @@ if __name__ == "__main__":
 
     if not raw_papers:
         print("No new papers found today.")
-        # Still regenerate site (shows empty state)
         enriched = []
     else:
         print(f"[Fetch] Retrieved {len(raw_papers)} new papers. Summarising...")
         enriched = summarise_papers(raw_papers, q_cfg)
 
-    # Write dated JSON data file (before updating history, so a crash here is safe)
     data_file = f"{today}.json"
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump({"date": today, "papers": enriched}, f, ensure_ascii=False, indent=2)
@@ -590,15 +569,12 @@ if __name__ == "__main__":
     if raw_papers:
         update_history(raw_papers)
 
-    # Refresh prompts based on accumulated feedback (query mode)
     if q_cfg["mode"] == "query":
         print("[Feedback] Checking if prompts need refresh based on user feedback...")
         maybe_refresh_prompts()
 
-    # Sync liked/disliked papers to similarity seeds (both modes)
     sync_feedback_to_seeds()
 
-    # Regenerate website
     import site_generator
     site_generator.build(today, enriched)
     print("=== Done ===")
